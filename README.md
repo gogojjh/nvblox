@@ -1,10 +1,4 @@
 # Nvblox-modify
-#### Development
-1. Nvblox offers API to integrate LiDAR frames, but users need to write the specific API to use the KITTI and FusionPortable dataset
-    1. [std::move](https://en.cppreference.com/w/cpp/utility/move): an efficient way to move resources from A to B 
-
-2. (solved) ROS1 interface: users need to create the nvblox_ros to use ROS
-
 #### Code Pipeline
 
 1. Data loader
@@ -52,9 +46,7 @@
 4. Global planning test
 
 --------------------------
-### KITTI dataset
-
-##### Demo 
+### Demo with the [KITTI](https://www.cvlibs.net/datasets/kitti) dataset
 
 1. Prepare data: 
 * Option 1: Generate test data from the semanticKITTI or KITTI
@@ -65,14 +57,11 @@
 2. Run the NVBlox
     ```../script/run_fuse_kitti.sh```
 
-##### Note 
 * [Code review of Voxfield and Panmap](docs/code_review_panmap.md)
 * [Experiments on NVBlox with the KITTI dataset](docs/experiments_kitti.md)
 
 --------------------------
-### FusionPortable dataset
-
-##### Demo 
+### Demo with the [FusionPortable](https://ram-lab.com/file/site/multi-sensor-dataset) dataset
 
 1. Create a docker container
     ```
@@ -111,13 +100,11 @@
     
     ```python3 ../../visualization/visualize_mesh.py 20220216_garden_day_mesh.ply```
 
-##### Note
 * [Tricks to preprocess OSLiDAR points](docs/preprocess_OSLiDAR.md)
 
 * [Experiments on NVBlox and VDBMapping](docs/experiments_fusionportable.md)
 
 
---------------------------
 --------------------------
 --------------------------
 # nvblox
