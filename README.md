@@ -49,21 +49,21 @@
 -------------------------- 
 ### Build the NVBlox
 1. Install dependencies (suggest using the docker image)
-```
-docker pull iidcramlab/nvblox:20221203-ros-noetic-open3d
-nvidia-docker run -e DISPLAY -v ~/.Xauthority:/root/.Xauthority:rw \
-    --network host -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-    -v <your_folder>:<docker_foder> \
-    --privileged --cap-add sys_ptrace -it \
-    --name nvblox iidcramlab/nvblox:20221203-ros-noetic-open3d \
-    /bin/bash
-```
+    ```
+    docker pull iidcramlab/nvblox:20221203-ros-noetic-open3d
+    nvidia-docker run -e DISPLAY -v ~/.Xauthority:/root/.Xauthority:rw \
+        --network host -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+        -v <your_folder>:<docker_foder> \
+        --privileged --cap-add sys_ptrace -it \
+        --name nvblox iidcramlab/nvblox:20221203-ros-noetic-open3d \
+        /bin/bash
+    ```
 
 2. Build
-```
-cd path_to_nvblox/nvblox
-mkdir build && cd build && cmake .. && make -j6
-```
+    ```
+    cd path_to_nvblox/nvblox
+    mkdir build && cd build && cmake .. && make -j6
+    ```
 
 --------------------------
 ### Demo with the [KITTI](https://www.cvlibs.net/datasets/kitti) dataset
