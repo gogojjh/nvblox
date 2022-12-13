@@ -89,6 +89,17 @@ void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                    layers_.getPtr<ColorLayer>());
 }
 
+// **********************************************************
+// TODO(gogojjh): integrateSemantic
+template <typename SensorType>
+void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
+                                   const Transform& T_L_C,
+                                   const SensorType& sensor) {
+  // semantic_integrator_.integrateFrame(semantic_frame, T_L_C, sensor,
+  //                                     layers_.get<TsdfLayer>(),
+  //                                     layers_.getPtr<SemanticLayer>());
+}
+
 std::vector<Index3D> RgbdMapper::updateMesh() {
   // Convert the set of MeshBlocks needing an update to a vector
   std::vector<Index3D> mesh_blocks_to_update_vector(

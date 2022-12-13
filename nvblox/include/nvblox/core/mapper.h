@@ -29,6 +29,7 @@ limitations under the License.
 #include "nvblox/core/voxels.h"
 #include "nvblox/integrators/esdf_integrator.h"
 #include "nvblox/integrators/projective_color_integrator.h"
+#include "nvblox/integrators/projective_semantic_integrator.h"
 #include "nvblox/integrators/projective_tsdf_integrator.h"
 #include "nvblox/mesh/mesh_integrator.h"
 
@@ -117,6 +118,17 @@ class RgbdMapper : public MapperBase {
   ///@param lidar Intrinsics model of the Ouster LiDAR.
   void integrateOSLidarDepth(DepthImage& depth_frame, const Transform& T_L_C,
                              OSLidar& oslidar);
+
+  /// Integrates a semantic image into the reconstruction.
+  ///@param semantic_frame Semantic image representing the LiDAR-based range
+  /// image or rgb image.
+  ///@param T_L_C Pose of the sensor, specified as a transform from sensor-frame
+  ///             to Layer-frame transform.
+  ///@param lidar Intrinsics model of the Sensor. The sensor could be a LiDAR or
+  /// a camera.
+  template <typename SensorType>
+  void integrateSemantic(const SemanticImage& semantic_frame,
+                         const Transform& T_L_C, const SensorType& sensor);
 
   /// Updates the mesh blocks which require an update
   /// @return The indices of the blocks that were updated in this call.
@@ -235,6 +247,13 @@ class RgbdMapper : public MapperBase {
   /// Getter
   ///@return const ProjectiveColorIntegrator& Color integrator.
   ProjectiveColorIntegrator& color_integrator() { return color_integrator_; }
+  /// NOTE(gogojjh): add semantic_integrator()
+  /// Getter
+  ///@return const ProjectiveSemanticIntegrator& Semantic integrator used for
+  ///        semantic frame integration.
+  ProjectiveSemanticIntegrator& semantic_integrator() {
+    return semantic_integrator_;
+  }
   /// Getter
   ///@return const MeshIntegrator& Mesh integrator
   MeshIntegrator& mesh_integrator() { return mesh_integrator_; }
@@ -267,7 +286,10 @@ class RgbdMapper : public MapperBase {
   /// Integrators
   ProjectiveTsdfIntegrator tsdf_integrator_;
   ProjectiveTsdfIntegrator lidar_tsdf_integrator_;
+
   ProjectiveColorIntegrator color_integrator_;
+  ProjectiveSemanticIntegrator semantic_integrator_;
+
   MeshIntegrator mesh_integrator_;
   EsdfIntegrator esdf_integrator_;
 

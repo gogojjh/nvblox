@@ -336,8 +336,6 @@ void ProjectiveColorIntegrator::updateBlocks(
   CHECK_NOTNULL(layer_ptr);
   CHECK_EQ(color_frame.rows() % depth_frame.rows(), 0);
   CHECK_EQ(color_frame.cols() % depth_frame.cols(), 0);
-  std::cout << "[updateBlocks]: update " << block_indices.size() << " blocks"
-            << std::endl;
 
   if (block_indices.empty()) {
     return;

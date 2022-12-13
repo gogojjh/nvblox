@@ -52,4 +52,21 @@ struct ColorVoxel {
   float weight = 0.0f;
 };
 
+/// TODO(gogojjh):
+static constexpr size_t kTotalNumberOfLabels = 21;
+typedef Eigen::Matrix<float, kTotalNumberOfLabels, 1> SemanticProbabilities;
+struct SemanticVoxel {
+  // Initialize voxel to unknown label.
+  uint8_t semantic_label = 0u;
+  // Initialize voxel to uniform probability.
+  // Use log odds! So uniform ditribution of 1/kTotalNumberOfLabels,
+  // should be std::log(1/kTotalNumberOfLabels)
+  SemanticProbabilities semantic_priors =
+      // SemanticProbabilities::Constant(std::log(1 / kTotalNumberOfLabels));
+      SemanticProbabilities::Constant(-0.60205999132);
+  // Initialize voxel with gray color
+  // Make sure that all color maps agree on semantic label 0u -> gray
+  Color color = Color::Gray();
+};
+
 }  // namespace nvblox

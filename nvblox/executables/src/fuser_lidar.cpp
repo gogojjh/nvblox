@@ -86,6 +86,18 @@ DEFINE_double(esdf_zmin, 0.5, "zmin of the 2D ESDF map");
 DEFINE_double(esdf_zmax, 1.0, "zmax of the 2D ESDF map");
 DEFINE_double(esdf_z_slice, 0.75, "z_slice of the 2D ESDF map");
 
+// Semantic Integrator settings
+/// TODO(gogojjh): improve the variable naming
+DEFINE_double(semantic_integrator_max_integration_distance_m, -1.0,
+              "Maximum distance (in meters) from the camera at which to "
+              "integrate data into the Semantic.");
+DEFINE_double(semantic_integrator_truncation_distance_vox, -1.0,
+              "Truncation band (in voxels).");
+DEFINE_double(semantic_integrator_max_weight, -1.0,
+              "The maximum weight that a semantic voxel can accumulate through "
+              "integration.");
+DEFINE_int32(semantic_source, 0, "The semantic source. 0: LiDAR, 1: camera");
+
 namespace nvblox {
 FuserLidar::FuserLidar(
     std::unique_ptr<datasets::RgbdDataLoaderInterface>&& data_loader)
@@ -102,13 +114,17 @@ FuserLidar::FuserLidar(
   mapper_ = std::make_unique<RgbdMapper>(voxel_size_m_);
 
   // Default parameters
-  mapper_->mesh_integrator().min_weight(2.0f);
-  mapper_->color_integrator().max_integration_distance_m(5.0f);
   mapper_->lidar_tsdf_integrator().max_integration_distance_m(1.0f);
   mapper_->lidar_tsdf_integrator().view_calculator().raycast_subsampling_factor(
       4);
+  mapper_->mesh_integrator().min_weight(2.0f);
+  mapper_->color_integrator().max_integration_distance_m(5.0f);
   mapper_->esdf_integrator().max_distance_m(4.0f);
   mapper_->esdf_integrator().min_weight(2.0f);
+
+  mapper_->semantic_integrator().max_integration_distance_m(1.0f);
+  mapper_->semantic_integrator().view_calculator().raycast_subsampling_factor(
+      4);
 
   // Pick commands off the command line
   readCommandLineFlags();
@@ -228,6 +244,39 @@ void FuserLidar::readCommandLineFlags() {
         FLAGS_color_integrator_max_integration_distance_m);
   }
 
+  // Semantic integrator
+  if (!gflags::GetCommandLineFlagInfoOrDie(
+           "semantic_integrator_max_integration_distance_m")
+           .is_default) {
+    LOG(INFO) << "Command line parameter found: "
+                 "semantic_integrator_max_integration_distance_m= "
+              << FLAGS_semantic_integrator_max_integration_distance_m;
+    mapper_->semantic_integrator().max_integration_distance_m(
+        FLAGS_semantic_integrator_max_integration_distance_m);
+  }
+  if (!gflags::GetCommandLineFlagInfoOrDie(
+           "semantic_integrator_truncation_distance_vox")
+           .is_default) {
+    LOG(INFO) << "Command line parameter found: "
+                 "semantic_integrator_truncation_distance_vox = "
+              << FLAGS_semantic_integrator_truncation_distance_vox;
+    mapper_->semantic_integrator().truncation_distance_vox(
+        FLAGS_semantic_integrator_truncation_distance_vox);
+  }
+  if (!gflags::GetCommandLineFlagInfoOrDie("semantic_integrator_max_weight")
+           .is_default) {
+    LOG(INFO)
+        << "Command line parameter found: semantic_integrator_max_weight = "
+        << FLAGS_semantic_integrator_max_weight;
+    mapper_->semantic_integrator().max_weight(
+        FLAGS_semantic_integrator_max_weight);
+  }
+  if (!gflags::GetCommandLineFlagInfoOrDie("semantic_source").is_default) {
+    LOG(INFO) << "Command line parameter found: semantic_source = "
+              << FLAGS_semantic_source;
+    mapper_->semantic_integrator().semantic_source(FLAGS_semantic_source);
+  }
+
   // ESDF integrator
   if (!gflags::GetCommandLineFlagInfoOrDie("esdf_integrator_min_weight")
            .is_default) {
@@ -244,7 +293,6 @@ void FuserLidar::readCommandLineFlags() {
     mapper_->esdf_integrator().max_site_distance_vox(
         FLAGS_esdf_integrator_max_site_distance_vox);
   }
-
   if (!gflags::GetCommandLineFlagInfoOrDie("esdf_integrator_max_distance_m")
            .is_default) {
     LOG(INFO)
@@ -253,7 +301,6 @@ void FuserLidar::readCommandLineFlags() {
     mapper_->esdf_integrator().max_distance_m(
         FLAGS_esdf_integrator_max_distance_m);
   }
-
   if (!gflags::GetCommandLineFlagInfoOrDie("esdf_mode").is_default) {
     LOG(INFO) << "Command line parameter found: esdf_mode = "
               << FLAGS_esdf_mode;

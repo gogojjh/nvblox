@@ -113,6 +113,7 @@ add_library(nvblox_lib SHARED
     src/integrators/cuda/view_calculator.cu
     src/integrators/cuda/projective_tsdf_integrator.cu
     src/integrators/cuda/projective_color_integrator.cu
+    src/integrators/cuda/projective_semantic_integrator.cu
     src/integrators/cuda/esdf_integrator.cu
     src/integrators/esdf_integrator.cpp
     src/integrators/view_calculator.cpp

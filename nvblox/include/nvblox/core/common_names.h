@@ -29,6 +29,8 @@ using EsdfBlock = VoxelBlock<EsdfVoxel>;
 using EsdfLayer = VoxelBlockLayer<EsdfVoxel>;
 using ColorBlock = VoxelBlock<ColorVoxel>;
 using ColorLayer = VoxelBlockLayer<ColorVoxel>;
+using SemanticBlock = VoxelBlock<SemanticVoxel>;
+using SemanticLayer = VoxelBlockLayer<SemanticVoxel>;
 using MeshLayer = BlockLayer<MeshBlock>;
 
 }  // namespace nvblox
