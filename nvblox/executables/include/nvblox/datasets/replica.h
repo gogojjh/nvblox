@@ -46,12 +46,13 @@ class DataLoader : public RgbdDataLoaderInterface {
                           Camera* camera_ptr,           // NOLINT
                           ColorImage* color_frame_ptr = nullptr) override;
 
-  DataLoadResult loadNext(DepthImage* depth_frame_ptr,             // NOLINT
-                          Transform* T_L_C_ptr,                    // NOLINT
-                          CameraPinhole* camera_ptr,               // NOLINT
-                          OSLidar* lidar_ptr,                      // NOLINT
-                          DepthImage* height_frame_ptr = nullptr,  // NOLINT
-                          ColorImage* color_frame_ptr = nullptr) override;
+  DataLoadResult loadNext(DepthImage* depth_frame_ptr,   // NOLINT
+                          Transform* T_L_C_ptr,          // NOLINT
+                          CameraPinhole* camera_ptr,     // NOLINT
+                          OSLidar* lidar_ptr,            // NOLINT
+                          DepthImage* height_frame_ptr,  // NOLINT
+                          ColorImage* color_frame_ptr = nullptr,
+                          SemanticImage* semantic_frame_ptr = nullptr) override;
 
  protected:
   const std::string base_path_;

@@ -124,8 +124,7 @@ class RgbdMapper : public MapperBase {
   /// image or rgb image.
   ///@param T_L_C Pose of the sensor, specified as a transform from sensor-frame
   ///             to Layer-frame transform.
-  ///@param lidar Intrinsics model of the Sensor. The sensor could be a LiDAR or
-  /// a camera.
+  ///@param sensor Intrinsics model of the Sensor.
   template <typename SensorType>
   void integrateSemantic(const SemanticImage& semantic_frame,
                          const Transform& T_L_C, const SensorType& sensor);

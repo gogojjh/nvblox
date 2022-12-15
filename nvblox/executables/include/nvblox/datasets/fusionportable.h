@@ -55,12 +55,13 @@ class DataLoader : public RgbdDataLoaderInterface {
   ///@param[out] height_frame_ptr The loaded z frame.
   ///@param[out] color_frame_ptr Optional, load color frame.
   ///@return Whether loading succeeded.
-  DataLoadResult loadNext(DepthImage* depth_frame_ptr,             // NOLINT
-                          Transform* T_L_C_ptr,                    // NOLINT
-                          CameraPinhole* camera_ptr,               // NOLINT
-                          OSLidar* lidar_ptr,                      // NOLINT
-                          DepthImage* height_frame_ptr = nullptr,  // NOLINT
-                          ColorImage* color_frame_ptr = nullptr) override;
+  DataLoadResult loadNext(DepthImage* depth_frame_ptr,   // NOLINT
+                          Transform* T_L_C_ptr,          // NOLINT
+                          CameraPinhole* camera_ptr,     // NOLINT
+                          OSLidar* lidar_ptr,            // NOLINT
+                          DepthImage* height_frame_ptr,  // NOLINT
+                          ColorImage* color_frame_ptr = nullptr,
+                          SemanticImage* semantic_frame_ptr = nullptr) override;
 
  protected:
   std::unique_ptr<ImageLoader<DepthImage>> height_image_loader_;

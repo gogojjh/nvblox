@@ -187,18 +187,15 @@ DataLoader::DataLoader(const std::string& base_path, const int seq_id,
 ///@param[out] height_frame_ptr The loaded z frame.
 ///@param[out] color_frame_ptr Optional, load color frame.
 ///@return Whether loading succeeded.
-DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
-                                    Transform* T_L_C_ptr,
-                                    CameraPinhole* camera_ptr,
-                                    OSLidar* lidar_ptr,
-                                    DepthImage* height_frame_ptr,
-                                    ColorImage* color_frame_ptr) {
+DataLoadResult DataLoader::loadNext(
+    DepthImage* depth_frame_ptr, Transform* T_L_C_ptr,
+    CameraPinhole* camera_ptr, OSLidar* lidar_ptr, DepthImage* height_frame_ptr,
+    ColorImage* color_frame_ptr, SemanticImage* semantic_frame_ptr) {
   CHECK_NOTNULL(depth_frame_ptr);
   CHECK_NOTNULL(T_L_C_ptr);
   CHECK_NOTNULL(camera_ptr);
   CHECK_NOTNULL(lidar_ptr);
   CHECK_NOTNULL(height_frame_ptr);
-  // CHECK_NOTNULL(color_frame_ptr);  // can be null
 
   // Because we might fail along the way, increment the frame number before we
   // start.
@@ -223,6 +220,8 @@ DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
     return DataLoadResult::kNoMoreData;
   }
   timer_file_coord.Stop();
+
+  // TODO(gogojjh): Load Semantic Frame
 
   // NOTE(gogojjh): Load lidar intrinsics:
   //  num_azimuth_divisions

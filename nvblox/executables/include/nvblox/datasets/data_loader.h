@@ -58,12 +58,13 @@ class RgbdDataLoaderInterface {
   ///@param[out] color_frame_ptr Optional, load color frame.
   ///@return Whether loading succeeded.
   virtual DataLoadResult loadNext(
-      DepthImage* depth_frame_ptr,             // NOLINT
-      Transform* T_L_C_ptr,                    // NOLINT
-      CameraPinhole* camera_ptr,               // NOLINT
-      OSLidar* lidar_ptr,                      // NOLINT
-      DepthImage* height_frame_ptr = nullptr,  // NOLINT
-      ColorImage* color_frame_ptr = nullptr) = 0;
+      DepthImage* depth_frame_ptr,   // NOLINT
+      Transform* T_L_C_ptr,          // NOLINT
+      CameraPinhole* camera_ptr,     // NOLINT
+      OSLidar* lidar_ptr,            // NOLINT
+      DepthImage* height_frame_ptr,  // NOLINT
+      ColorImage* color_frame_ptr = nullptr,
+      SemanticImage* semantic_frame_ptr = nullptr) = 0;
 
  protected:
   // Objects which do (multithreaded) image loading.

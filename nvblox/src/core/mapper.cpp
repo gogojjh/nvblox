@@ -19,7 +19,6 @@ limitations under the License.
 #include "nvblox/core/mapper.h"
 
 namespace nvblox {
-
 // NOTE(gogojjh): Define the template function
 template void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                          const Transform& T_L_C,
@@ -28,6 +27,18 @@ template void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                          const Transform& T_L_C,
                                          const CameraPinhole& camera);
 
+template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
+                                            const Transform& T_L_C,
+                                            const Camera& sensor);
+template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
+                                            const Transform& T_L_C,
+                                            const Lidar& sensor);
+template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
+                                            const Transform& T_L_C,
+                                            const OSLidar& sensor);
+}  // namespace nvblox
+
+namespace nvblox {
 //////////////////////////////////////////////////////////////////////
 RgbdMapper::RgbdMapper(float voxel_size_m, MemoryType memory_type)
     : voxel_size_m_(voxel_size_m), memory_type_(memory_type) {
@@ -95,9 +106,9 @@ template <typename SensorType>
 void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
                                    const Transform& T_L_C,
                                    const SensorType& sensor) {
-  // semantic_integrator_.integrateFrame(semantic_frame, T_L_C, sensor,
-  //                                     layers_.get<TsdfLayer>(),
-  //                                     layers_.getPtr<SemanticLayer>());
+  semantic_integrator_.integrateFrame(semantic_frame, T_L_C, sensor,
+                                      layers_.get<TsdfLayer>(),
+                                      layers_.getPtr<SemanticLayer>());
 }
 
 std::vector<Index3D> RgbdMapper::updateMesh() {

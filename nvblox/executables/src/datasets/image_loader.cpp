@@ -26,9 +26,9 @@ namespace nvblox {
 namespace datasets {
 
 bool load16BitDepthImage(const std::string& filename,
-                         DepthImage* depth_frame_ptr, MemoryType memory_type,
+                         DepthImage* depth_image_ptr, MemoryType memory_type,
                          const float scale_factor, const float scale_offset) {
-  CHECK_NOTNULL(depth_frame_ptr);
+  CHECK_NOTNULL(depth_image_ptr);
   std::string timer_name;
   if (scale_offset == 0.0f) {
     timer_name = "file_loading/depth_image/stbi";
@@ -68,7 +68,7 @@ bool load16BitDepthImage(const std::string& filename,
     }
   }
 
-  *depth_frame_ptr = DepthImage::fromBuffer(
+  *depth_image_ptr = DepthImage::fromBuffer(
       height, width, float_image_data.data(), memory_type);
 
   stbi_image_free(image_data);
@@ -99,6 +99,30 @@ bool load8BitColorImage(const std::string& filename,
   return true;
 }
 
+/// NOTE(gogojjh): Load semantic image
+bool load16BitSemanticImage(const std::string& filename,
+                            SemanticImage* semantic_frame_ptr,
+                            MemoryType memory_type) {
+  CHECK_NOTNULL(semantic_frame_ptr);
+  timing::Timer stbi_timer("file_loading/semantic_image/stbi");
+
+  int width, height, num_channels;
+  uint16_t* image_data =
+      stbi_load_16(filename.c_str(), &width, &height, &num_channels, 0);
+  stbi_timer.Stop();
+
+  if (image_data == nullptr) {
+    return false;
+  }
+  CHECK_EQ(num_channels, 1);
+
+  *semantic_frame_ptr = SemanticImage::fromBuffer(
+      height, width, reinterpret_cast<uint16_t*>(image_data), memory_type);
+
+  stbi_image_free(image_data);
+  return true;
+}
+
 template <>
 bool ImageLoader<DepthImage>::getImage(int image_idx, DepthImage* image_ptr) {
   CHECK_NOTNULL(image_ptr);
@@ -113,6 +137,16 @@ bool ImageLoader<ColorImage>::getImage(int image_idx, ColorImage* image_ptr) {
   CHECK_NOTNULL(image_ptr);
   bool res = load8BitColorImage(index_to_filepath_(image_idx), image_ptr,
                                 memory_type_);
+  return res;
+}
+
+/// NOTE(gogojjh): load semantic image
+template <>
+bool ImageLoader<SemanticImage>::getImage(int image_idx,
+                                          SemanticImage* image_ptr) {
+  CHECK_NOTNULL(image_ptr);
+  bool res = load16BitSemanticImage(index_to_filepath_(image_idx), image_ptr,
+                                    memory_type_);
   return res;
 }
 

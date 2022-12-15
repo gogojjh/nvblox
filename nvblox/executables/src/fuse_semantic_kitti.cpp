@@ -34,11 +34,12 @@ int main(int argc, char* argv[]) {
   if (argc < 2) {
     // Try out running on the test datasets.
     base_path = "../tests/data/kitti";
-    LOG(WARNING) << "No KITTI file path specified; defaulting to the test "
-                    "directory.";
+    LOG(WARNING)
+        << "No Semantic KITTI file path specified; defaulting to the test "
+           "directory.";
   } else {
     base_path = argv[1];
-    LOG(INFO) << "Loading KITTI files from " << base_path;
+    LOG(INFO) << "Loading Semantic KITTI files from " << base_path;
   }
 
   // Fuser
@@ -53,7 +54,9 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Mesh location:" << fuser_lidar->mesh_output_path_;
   }
 
-  // NOTE(gogojjh): set extrinsics from the base_link to the camera
+  /// NOTE(gogojjh): set extrinsics from the base_link to the camera
+  /// NOTE(gogojjh): semanticKITTI does not have images, but extrinsics are
+  /// still set
   Eigen::Quaternionf Qcb(0.500292, 0.490181, -0.508467, 0.500889);
   Eigen::Vector3f tcb(0.067436, -0.022029, -0.078333);
   Eigen::Quaternionf Qbc = Qcb.inverse();

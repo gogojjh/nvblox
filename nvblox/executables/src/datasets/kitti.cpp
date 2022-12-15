@@ -143,6 +143,14 @@ std::string getPathForHeightImage(const std::string& base_path,
   return ss.str();
 }
 
+std::string getPathForSemanticImage(const std::string& base_path,
+                                    const int seq_id, const int frame_id) {
+  std::stringstream ss;
+  ss << base_path << "/seq-" << std::setfill('0') << std::setw(2) << seq_id
+     << "/frame-" << std::setw(6) << frame_id << ".label.png";
+  return ss.str();
+}
+
 std::unique_ptr<ImageLoader<DepthImage>> createDepthImageLoader(
     const std::string& base_path, const int seq_id, const bool multithreaded) {
   return createImageLoader<DepthImage>(
@@ -166,12 +174,20 @@ std::unique_ptr<ImageLoader<DepthImage>> createHeightImageLoader(
       kDefaultUintDepthScaleOffset);
 }
 
+std::unique_ptr<ImageLoader<SemanticImage>> createSemanticImageLoader(
+    const std::string& base_path, const int seq_id, const bool multithreaded) {
+  return createImageLoader<SemanticImage>(
+      std::bind(getPathForSemanticImage, base_path, seq_id,
+                std::placeholders::_1),
+      multithreaded);
+}
+
 }  // namespace internal
 
 std::unique_ptr<FuserLidar> createFuser(const std::string base_path,
                                         const int seq_id) {
   bool multithreaded = false;
-  // Object to load FusionPortable data
+  // Object to load KITTI data
   auto data_loader =
       std::make_unique<DataLoader>(base_path, seq_id, multithreaded);
   // FuserLidar
@@ -186,6 +202,9 @@ DataLoader::DataLoader(const std::string& base_path, const int seq_id,
                                   base_path, seq_id, multithreaded)),
       height_image_loader_(std::move(kitti::internal::createHeightImageLoader(
           base_path, seq_id, multithreaded))),
+      semantic_image_loader_(
+          std::move(kitti::internal::createSemanticImageLoader(
+              base_path, seq_id, multithreaded))),
       base_path_(base_path),
       seq_id_(seq_id) {
   //
@@ -197,19 +216,19 @@ DataLoader::DataLoader(const std::string& base_path, const int seq_id,
 ///@param[out] camera_ptr The intrinsic camera model.
 ///@param[out] height_frame_ptr The loaded z frame.
 ///@param[out] color_frame_ptr Optional, load color frame.
+///@param[out] semantic_frame_ptr Optional, load semantic frame.
 ///@return Whether loading succeeded.
-DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
-                                    Transform* T_L_C_ptr,
-                                    CameraPinhole* camera_ptr,
-                                    OSLidar* lidar_ptr,
-                                    DepthImage* height_frame_ptr,
-                                    ColorImage* color_frame_ptr) {
+DataLoadResult DataLoader::loadNext(
+    DepthImage* depth_frame_ptr, Transform* T_L_C_ptr,
+    CameraPinhole* camera_ptr, OSLidar* lidar_ptr, DepthImage* height_frame_ptr,
+    ColorImage* color_frame_ptr, SemanticImage* semantic_frame_ptr) {
   CHECK_NOTNULL(depth_frame_ptr);
   CHECK_NOTNULL(T_L_C_ptr);
-  CHECK_NOTNULL(camera_ptr);
   CHECK_NOTNULL(lidar_ptr);
   CHECK_NOTNULL(height_frame_ptr);
-  // CHECK_NOTNULL(color_frame_ptr);  // can be null
+  // CHECK_NOTNULL(camera_ptr);         // can be null
+  // CHECK_NOTNULL(color_frame_ptr);    // can be null
+  // CHECK_NOTNULL(semantic_frame_ptr); // can be null
 
   // Because we might fail along the way, increment the frame number before we
   // start.
@@ -229,11 +248,21 @@ DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
 
   // Load the image into a Height Frame.
   CHECK(height_image_loader_);
-  timing::Timer timer_file_coord("file_loading/height_image");
+  timing::Timer timer_file_height("file_loading/height_image");
   if (!height_image_loader_->getNextImage(height_frame_ptr)) {
     return DataLoadResult::kNoMoreData;
   }
-  timer_file_coord.Stop();
+  timer_file_height.Stop();
+
+  // Load the image into a Semantic Frame.
+  if (semantic_frame_ptr) {
+    CHECK(semantic_image_loader_);
+    timing::Timer timer_file_semantic("file_loading/semantic_image");
+    if (!semantic_image_loader_->getNextImage(semantic_frame_ptr)) {
+      return DataLoadResult::kNoMoreData;
+    }
+    timer_file_semantic.Stop();
+  }
 
   // NOTE(gogojjh): Load lidar intrinsics:
   //  num_azimuth_divisions
@@ -286,9 +315,6 @@ DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
             &R_rect, &image_height, &image_width)) {
       return DataLoadResult::kNoMoreData;
     }
-    // std::cout << image_height << " " << image_width << std::endl
-    //           << P_rect << std::endl
-    //           << R_rect << std::endl;
 
     // Create a camera object.
     *camera_ptr = CameraPinhole::fromIntrinsicsMatrix(
@@ -334,13 +360,6 @@ DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
   return DataLoadResult::kSuccess;
 }
 
-// NOTE(gogojjh): need to define the virutal function (not used) here
-/// Interface for a function that loads the next frames in a dataset
-///@param[out] depth_frame_ptr The loaded depth frame.
-///@param[out] T_L_C_ptr Transform from Camera to the Layer frame.
-///@param[out] camera_ptr The intrinsic camera model.
-///@param[out] color_frame_ptr Optional, load color frame.
-///@return Whether loading succeeded.
 DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
                                     Transform* T_L_C_ptr, Camera* camera_ptr,
                                     ColorImage* color_frame_ptr) {

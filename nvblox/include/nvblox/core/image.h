@@ -137,7 +137,7 @@ using DepthImage = Image<float>;
 using NormalImage = Image<Vector3f>;
 using ColorImage = Image<Color>;
 using CoorImage = Image<Vector3f>;
-using SemanticImage = Image<uint8_t>;
+using SemanticImage = Image<uint16_t>;
 
 // Image Reductions
 namespace image {

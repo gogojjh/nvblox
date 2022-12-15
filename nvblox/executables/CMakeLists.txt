@@ -66,3 +66,10 @@ target_link_libraries(fuse_kitti
 	nvblox_lib nvblox_datasets nvblox_datasets_kitti
 )
 set_target_properties(fuse_kitti PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+# Semantic KITTI executable
+add_executable(fuse_semantic_kitti	src/fuse_semantic_kitti.cpp)
+target_link_libraries(fuse_semantic_kitti
+	nvblox_lib nvblox_datasets nvblox_datasets_kitti
+)
+set_target_properties(fuse_semantic_kitti PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

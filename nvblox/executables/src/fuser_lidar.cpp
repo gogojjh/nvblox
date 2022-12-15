@@ -48,6 +48,8 @@ DEFINE_int32(tsdf_frame_subsampling, 0,
              "means only every 3rd frame is taken.");
 DEFINE_int32(color_frame_subsampling, 0,
              "How much to subsample the color integration by.");
+DEFINE_int32(semantic_frame_subsampling, 0,
+             "How much to subsample the semantic integration by.");
 DEFINE_int32(mesh_frame_subsampling, 0,
              "How much to subsample the meshing by.");
 DEFINE_int32(esdf_frame_subsampling, 0,
@@ -87,7 +89,6 @@ DEFINE_double(esdf_zmax, 1.0, "zmax of the 2D ESDF map");
 DEFINE_double(esdf_z_slice, 0.75, "z_slice of the 2D ESDF map");
 
 // Semantic Integrator settings
-/// TODO(gogojjh): improve the variable naming
 DEFINE_double(semantic_integrator_max_integration_distance_m, -1.0,
               "Maximum distance (in meters) from the camera at which to "
               "integrate data into the Semantic.");
@@ -96,7 +97,6 @@ DEFINE_double(semantic_integrator_truncation_distance_vox, -1.0,
 DEFINE_double(semantic_integrator_max_weight, -1.0,
               "The maximum weight that a semantic voxel can accumulate through "
               "integration.");
-DEFINE_int32(semantic_source, 0, "The semantic source. 0: LiDAR, 1: camera");
 
 namespace nvblox {
 FuserLidar::FuserLidar(
@@ -125,6 +125,8 @@ FuserLidar::FuserLidar(
   mapper_->semantic_integrator().max_integration_distance_m(1.0f);
   mapper_->semantic_integrator().view_calculator().raycast_subsampling_factor(
       4);
+  /// NOTE(gogojjh): The semantic source. 0: LiDAR, 1: camera
+  mapper_->semantic_integrator().semantic_source(0);
 
   // Pick commands off the command line
   readCommandLineFlags();
@@ -176,6 +178,13 @@ void FuserLidar::readCommandLineFlags() {
     LOG(INFO) << "Command line parameter found: color_frame_subsampling = "
               << FLAGS_color_frame_subsampling;
     setColorFrameSubsampling(FLAGS_color_frame_subsampling);
+  }
+  ///// NOTE(gogojjh)
+  if (!gflags::GetCommandLineFlagInfoOrDie("semantic_frame_subsampling")
+           .is_default) {
+    LOG(INFO) << "Command line parameter found: semantic_frame_subsampling = "
+              << FLAGS_semantic_frame_subsampling;
+    setSemanticFrameSubsampling(FLAGS_semantic_frame_subsampling);
   }
   if (!gflags::GetCommandLineFlagInfoOrDie("mesh_frame_subsampling")
            .is_default) {
@@ -270,11 +279,6 @@ void FuserLidar::readCommandLineFlags() {
         << FLAGS_semantic_integrator_max_weight;
     mapper_->semantic_integrator().max_weight(
         FLAGS_semantic_integrator_max_weight);
-  }
-  if (!gflags::GetCommandLineFlagInfoOrDie("semantic_source").is_default) {
-    LOG(INFO) << "Command line parameter found: semantic_source = "
-              << FLAGS_semantic_source;
-    mapper_->semantic_integrator().semantic_source(FLAGS_semantic_source);
   }
 
   // ESDF integrator
@@ -375,6 +379,11 @@ void FuserLidar::setColorFrameSubsampling(int subsample) {
   color_frame_subsampling_ = subsample;
 }
 
+///// NOTE(gogojjh):
+void FuserLidar::setSemanticFrameSubsampling(int subsample) {
+  semantic_frame_subsampling_ = subsample;
+}
+
 void FuserLidar::setMeshFrameSubsampling(int subsample) {
   mesh_frame_subsampling_ = subsample;
 }
@@ -398,11 +407,40 @@ bool FuserLidar::integrateFrame(const int frame_number) {
   DepthImage depth_frame;
   DepthImage height_frame;
   ColorImage color_frame;
+  SemanticImage semantic_frame;
   Transform T_W_B;
   CameraPinhole camera;
   OSLidar oslidar;
-  const datasets::DataLoadResult load_result = data_loader_->loadNext(
-      &depth_frame, &T_W_B, &camera, &oslidar, &height_frame, &color_frame);
+  datasets::DataLoadResult load_result;
+  /// NOTE(gogojjh): load color_frame and semantic_frame
+  if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ > 0) {
+    load_result =
+        data_loader_->loadNext(&depth_frame, &T_W_B, &camera, &oslidar,
+                               &height_frame, &color_frame, &semantic_frame);
+    LOG(INFO) << "Loading color_frame and semantic_frame";
+  }
+  /// NOTE(gogojjh): load color_frame, not load semantic_frame
+  else if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ < 0) {
+    load_result =
+        data_loader_->loadNext(&depth_frame, &T_W_B, &camera, &oslidar,
+                               &height_frame, &color_frame, nullptr);
+    LOG(INFO) << "Loading color_frame";
+  }
+  /// NOTE(gogojjh): not load color_frame, load semantic_frame
+  else if (color_frame_subsampling_ < 0 && semantic_frame_subsampling_ > 0) {
+    load_result =
+        data_loader_->loadNext(&depth_frame, &T_W_B, nullptr, &oslidar,
+                               &height_frame, nullptr, &semantic_frame);
+    LOG(INFO) << "Loading semantic_frame";
+  }
+
+  /// NOTE(gogojjh): not load color_frame and semantic_frame
+  else if (color_frame_subsampling_ < 0 && semantic_frame_subsampling_ < 0) {
+    load_result =
+        data_loader_->loadNext(&depth_frame, &T_W_B, nullptr, &oslidar,
+                               &height_frame, nullptr, nullptr);
+    LOG(INFO) << "Not loading color_frame and semantic_frame";
+  }
   timer_file.Stop();
 
   if (load_result == datasets::DataLoadResult::kBadFrame) {
@@ -429,11 +467,20 @@ bool FuserLidar::integrateFrame(const int frame_number) {
     mapper_->integrateOSLidarDepth(depth_frame, T_W_B, oslidar);
     timer_integrate.Stop();
 
+    /// NOTE(gogojjh): integrate semantic frame using semantic_integrator
+    if (semantic_frame_subsampling_ > 0) {
+      if ((frame_number + 1) % semantic_frame_subsampling_ == 0) {
+        timing::Timer timer_integrate_semantic("fuser/integrate_semantic");
+        mapper_->integrateSemantic(semantic_frame, T_W_B, oslidar);
+        timer_integrate_semantic.Stop();
+      }
+    }
+
     nvblox::cuda::freeNormalImageOSLidar(oslidar);
   }
 
-  Transform T_W_C = T_W_B * T_B_C_;
   if (color_frame_subsampling_ > 0) {
+    Transform T_W_C = T_W_B * T_B_C_;
     if ((frame_number + 1) % color_frame_subsampling_ == 0) {
       timing::Timer timer_integrate_color("fuser/integrate_color");
       mapper_->integrateColor(color_frame, T_W_C, camera);

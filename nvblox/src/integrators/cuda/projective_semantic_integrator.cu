@@ -689,7 +689,7 @@ void ProjectiveSemanticIntegrator::integrateFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
     const SensorType& sensor, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
-  CHECK_NOTNULL(semantic_layer);
+  // CHECK_NOTNULL(semantic_layer);
   LOG(INFO) << "ProjectiveSemanticIntegrator::integrateFrame";
   /// NOTE(gogojjh) integrateFrameTemplate
 }

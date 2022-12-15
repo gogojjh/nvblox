@@ -51,6 +51,7 @@ class FuserLidar {
   void setVoxelSize(float voxel_size);
   void setTsdfFrameSubsampling(int subsample);
   void setColorFrameSubsampling(int subsample);
+  void setSemanticFrameSubsampling(int subsample);
   void setMeshFrameSubsampling(int subsample);
   void setEsdfFrameSubsampling(int subsample);
   void setEsdfMode(RgbdMapper::EsdfMode esdf_mode);
@@ -81,7 +82,8 @@ class FuserLidar {
   // Params
   float voxel_size_m_ = 0.05;
   int tsdf_frame_subsampling_ = 1;
-  int color_frame_subsampling_ = 1;
+  int color_frame_subsampling_ = -1;
+  int semantic_frame_subsampling_ = -1;
   // By default we just do the mesh and esdf once at the end (if output paths
   // exist)
   int mesh_frame_subsampling_ = -1;
