@@ -23,18 +23,6 @@ limitations under the License.
 #include "nvblox/utils/timing.h"
 
 namespace nvblox {
-
-/// NOTE(gogojjh): define template function
-template std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycast(
-    const DepthImage& depth_frame, const Transform& T_L_C, const Camera& camera,
-    const float block_size, const float truncation_distance_m,
-    const float max_integration_distance_m);
-
-template std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycast(
-    const DepthImage& depth_frame, const Transform& T_L_C,
-    const CameraPinhole& camera, const float block_size,
-    const float truncation_distance_m, const float max_integration_distance_m);
-
 ///////////////////////////////////////////////////////////////
 ViewCalculator::ViewCalculator() { cudaStreamCreate(&cuda_stream_); }
 ViewCalculator::~ViewCalculator() { cudaStreamDestroy(cuda_stream_); }
@@ -214,6 +202,7 @@ __global__ void combinedBlockIndicesInImageKernel(
   setIndexUpdated(block_index, aabb_min, aabb_size, aabb_updated);
 
   // Ok raycast to the correct point in the block.
+  ///// NOTE(gogojjh): retrieve all voxels interacts with the ray
   RayCaster raycaster(T_L_C.translation() / block_size, p_L / block_size);
   Index3D ray_index = Index3D::Zero();
   while (raycaster.nextRayIndex(&ray_index)) {
@@ -224,13 +213,13 @@ __global__ void combinedBlockIndicesInImageKernel(
 template <typename SensorType>
 std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycastTemplate(
     const DepthImage& depth_frame, const Transform& T_L_C,
-    const SensorType& camera, const float block_size,
+    const SensorType& sensor, const float block_size,
     const float truncation_distance_m, const float max_integration_distance_m) {
   timing::Timer setup_timer("in_view/setup");
 
   // Aight so first we have to get the AABB of this guy.
   const AxisAlignedBoundingBox aabb_L =
-      camera.getViewAABB(T_L_C, 0.0f, max_integration_distance_m);
+      sensor.getViewAABB(T_L_C, 0.0f, max_integration_distance_m);
 
   // Get the min index and the max index.
   const Index3D min_index =
@@ -261,12 +250,12 @@ std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycastTemplate(
   // Raycast
   // default: true
   if (raycast_to_pixels_) {
-    getBlocksByRaycastingPixels(T_L_C, camera, depth_frame, block_size,
+    getBlocksByRaycastingPixels(T_L_C, sensor, depth_frame, block_size,
                                 truncation_distance_m,
                                 max_integration_distance_m, min_index,
                                 aabb_size, aabb_device_buffer_.data());
   } else {
-    getBlocksByRaycastingCorners(T_L_C, camera, depth_frame, block_size,
+    getBlocksByRaycastingCorners(T_L_C, sensor, depth_frame, block_size,
                                  truncation_distance_m,
                                  max_integration_distance_m, min_index,
                                  aabb_size, aabb_device_buffer_.data());
@@ -293,10 +282,19 @@ std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycastTemplate(
 }
 
 // Camera
-template <typename CameraType>
+std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycast(
+    const DepthImage& depth_frame, const Transform& T_L_C, const Camera& camera,
+    const float block_size, const float truncation_distance_m,
+    const float max_integration_distance_m) {
+  return getBlocksInImageViewRaycastTemplate(depth_frame, T_L_C, camera,
+                                             block_size, truncation_distance_m,
+                                             max_integration_distance_m);
+}
+
+// CameraPinhole
 std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycast(
     const DepthImage& depth_frame, const Transform& T_L_C,
-    const CameraType& camera, const float block_size,
+    const CameraPinhole& camera, const float block_size,
     const float truncation_distance_m, const float max_integration_distance_m) {
   return getBlocksInImageViewRaycastTemplate(depth_frame, T_L_C, camera,
                                              block_size, truncation_distance_m,
@@ -325,7 +323,7 @@ std::vector<Index3D> ViewCalculator::getBlocksInImageViewRaycast(
 
 template <typename SensorType>
 void ViewCalculator::getBlocksByRaycastingCorners(
-    const Transform& T_L_C, const SensorType& camera,
+    const Transform& T_L_C, const SensorType& sensor,
     const DepthImage& depth_frame, float block_size,
     const float truncation_distance_m, const float max_integration_distance_m,
     const Index3D& min_index, const Index3D& aabb_size,
@@ -343,7 +341,7 @@ void ViewCalculator::getBlocksByRaycastingCorners(
 
   timing::Timer image_blocks_timer("in_view/get_image_blocks");
   getBlockIndicesInImageKernel<<<block_dim, thread_dim, 0, cuda_stream_>>>(
-      T_L_C, camera, depth_frame.dataConstPtr(), depth_frame.rows(),
+      T_L_C, sensor, depth_frame.dataConstPtr(), depth_frame.rows(),
       depth_frame.cols(), block_size, max_integration_distance_m,
       truncation_distance_m, min_index, aabb_size, aabb_updated_cuda);
   checkCudaErrors(cudaStreamSynchronize(cuda_stream_));
@@ -381,7 +379,7 @@ void ViewCalculator::getBlocksByRaycastingCorners(
 
 template <typename SensorType>
 void ViewCalculator::getBlocksByRaycastingPixels(
-    const Transform& T_L_C, const SensorType& camera,
+    const Transform& T_L_C, const SensorType& sensor,
     const DepthImage& depth_frame, float block_size,
     const float truncation_distance_m, const float max_integration_distance_m,
     const Index3D& min_index, const Index3D& aabb_size,
@@ -406,7 +404,7 @@ void ViewCalculator::getBlocksByRaycastingPixels(
 
   timing::Timer combined_kernel_timer("in_view/combined_kernel");
   combinedBlockIndicesInImageKernel<<<block_dim, thread_dim, 0, cuda_stream_>>>(
-      T_L_C, camera, depth_frame.dataConstPtr(), depth_frame.rows(),
+      T_L_C, sensor, depth_frame.dataConstPtr(), depth_frame.rows(),
       depth_frame.cols(), block_size, max_integration_distance_m,
       truncation_distance_m, raycast_subsampling_factor_, min_index, aabb_size,
       aabb_updated_cuda);

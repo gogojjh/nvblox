@@ -27,23 +27,27 @@ template void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                          const Transform& T_L_C,
                                          const CameraPinhole& camera);
 
-template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
-                                            const Transform& T_L_C,
-                                            const Camera& sensor);
-template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
-                                            const Transform& T_L_C,
-                                            const Lidar& sensor);
-template void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
-                                            const Transform& T_L_C,
-                                            const OSLidar& sensor);
+template void RgbdMapper::integrateCameraSemantic(
+    const SemanticImage& semantic_frame, const Transform& T_L_C,
+    const Camera& sensor);
+template void RgbdMapper::integrateCameraSemantic(
+    const SemanticImage& semantic_frame, const Transform& T_L_C,
+    const CameraPinhole& sensor);
+
+template void RgbdMapper::integrateLidarSemantic(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_L_C, const Lidar& sensor);
+template void RgbdMapper::integrateLidarSemantic(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_L_C, const OSLidar& sensor);
 }  // namespace nvblox
 
 namespace nvblox {
 //////////////////////////////////////////////////////////////////////
 RgbdMapper::RgbdMapper(float voxel_size_m, MemoryType memory_type)
     : voxel_size_m_(voxel_size_m), memory_type_(memory_type) {
-  layers_ = LayerCake::create<TsdfLayer, ColorLayer, EsdfLayer, MeshLayer>(
-      voxel_size_m_, memory_type);
+  layers_ = LayerCake::create<TsdfLayer, ColorLayer, EsdfLayer, MeshLayer,
+                              SemanticLayer>(voxel_size_m_, memory_type);
 }
 
 RgbdMapper::RgbdMapper(const std::string& map_filepath, MemoryType memory_type)
@@ -51,6 +55,7 @@ RgbdMapper::RgbdMapper(const std::string& map_filepath, MemoryType memory_type)
   loadMap(map_filepath);
 }
 
+///// TSDF Integration
 void RgbdMapper::integrateDepth(const DepthImage& depth_frame,
                                 const Transform& T_L_C, const Camera& camera) {
   // Call the integrator.
@@ -91,6 +96,7 @@ void RgbdMapper::integrateOSLidarDepth(DepthImage& depth_frame,
   esdf_blocks_to_update_.insert(updated_blocks.begin(), updated_blocks.end());
 }
 
+///// Color Integration
 template <typename CameraType>
 void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                 const Transform& T_L_C,
@@ -100,17 +106,27 @@ void RgbdMapper::integrateColor(const ColorImage& color_frame,
                                    layers_.getPtr<ColorLayer>());
 }
 
-// **********************************************************
-// TODO(gogojjh): integrateSemantic
-template <typename SensorType>
-void RgbdMapper::integrateSemantic(const SemanticImage& semantic_frame,
-                                   const Transform& T_L_C,
-                                   const SensorType& sensor) {
-  semantic_integrator_.integrateFrame(semantic_frame, T_L_C, sensor,
-                                      layers_.get<TsdfLayer>(),
-                                      layers_.getPtr<SemanticLayer>());
+///// Semantic Integration
+template <typename CameraType>
+void RgbdMapper::integrateCameraSemantic(const SemanticImage& semantic_frame,
+                                         const Transform& T_L_C,
+                                         const CameraType& camera) {
+  semantic_integrator_.integrateCameraFrame(semantic_frame, T_L_C, camera,
+                                            layers_.get<TsdfLayer>(),
+                                            layers_.getPtr<SemanticLayer>());
 }
 
+template <typename LidarType>
+void RgbdMapper::integrateLidarSemantic(const DepthImage& depth_frame,
+                                        const SemanticImage& semantic_frame,
+                                        const Transform& T_L_C,
+                                        const LidarType& lidar) {
+  semantic_integrator_.integrateLidarFrame(depth_frame, semantic_frame, T_L_C,
+                                           lidar, layers_.get<TsdfLayer>(),
+                                           layers_.getPtr<SemanticLayer>());
+}
+
+///// Mesh Integration
 std::vector<Index3D> RgbdMapper::updateMesh() {
   // Convert the set of MeshBlocks needing an update to a vector
   std::vector<Index3D> mesh_blocks_to_update_vector(
@@ -139,6 +155,7 @@ void RgbdMapper::generateMesh() {
       layers_.getPtr<MeshLayer>());
 }
 
+///// ESDF Integration
 std::vector<Index3D> RgbdMapper::updateEsdf() {
   CHECK(esdf_mode_ != EsdfMode::k2D)
       << "Currently, we limit computation of the ESDF to 2d *or* 3d. Not both.";
@@ -189,6 +206,7 @@ std::vector<Index3D> RgbdMapper::updateEsdfSlice(float slice_input_z_min,
   return esdf_blocks_to_update_vector;
 }
 
+///// Other operations
 std::vector<Index3D> RgbdMapper::clearOutsideRadius(const Vector3f& center,
                                                     float radius) {
   const std::vector<Index3D> block_indices_for_deletion =

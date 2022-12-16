@@ -44,7 +44,7 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   /// @param depth_frame A depth image.
   /// @param T_L_C The pose of the sensor. Supplied as a Transform mapping
   /// points in the sensor frame (C) to the layer frame (L).
-  /// @param sensor A the sensor (intrinsics) model.
+  /// @param camera A the camera (intrinsics) model.
   /// @param tsdf_layer The TSDF layer with which the semantic layer associated.
   /// Semantic integration is only performed on the voxels corresponding to the
   /// truncation band of this layer.
@@ -52,12 +52,33 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   /// intergrated.
   /// @param updated_blocks Optional pointer to a vector which will contain the
   /// 3D indices of blocks affected by the integration.
-  template <typename SensorType>
-  void integrateFrame(const SemanticImage& semantic_frame,
-                      const Transform& T_L_C, const SensorType& sensor,
-                      const TsdfLayer& tsdf_layer,
-                      SemanticLayer* semantic_layer,
-                      std::vector<Index3D>* updated_blocks = nullptr);
+  template <typename CameraType>
+  void integrateCameraFrame(const SemanticImage& semantic_frame,
+                            const Transform& T_L_C, const CameraType& camera,
+                            const TsdfLayer& tsdf_layer,
+                            SemanticLayer* semantic_layer,
+                            std::vector<Index3D>* updated_blocks = nullptr);
+
+  /// Integrates a depth image in to the passed TSDF layer.
+  /// @param depth_frame A depth image.
+  /// @param semantic_frame A semantic image.
+  /// @param T_L_C The pose of the sensor. Supplied as a Transform mapping
+  /// points in the sensor frame (C) to the layer frame (L).
+  /// @param lidar A the lidar (intrinsics) model.
+  /// @param tsdf_layer The TSDF layer with which the semantic layer associated.
+  /// Semantic integration is only performed on the voxels corresponding to the
+  /// truncation band of this layer.
+  /// @param semantic_layer A pointer to the layer into which this image will be
+  /// intergrated.
+  /// @param updated_blocks Optional pointer to a vector which will contain the
+  /// 3D indices of blocks affected by the integration.
+  template <typename LidarType>
+  void integrateLidarFrame(const DepthImage& depth_frame,
+                           const SemanticImage& semantic_frame,
+                           const Transform& T_L_C, const LidarType& lidar,
+                           const TsdfLayer& tsdf_layer,
+                           SemanticLayer* semantic_layer,
+                           std::vector<Index3D>* updated_blocks = nullptr);
 
   /// Blocks until GPU operations are complete
   /// Ensure outstanding operations are finished (relevant for integrators
@@ -90,18 +111,11 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   /// @param the new parameter value
   void lidar_nearest_interpolation_max_allowable_dist_to_ray_vox(float value);
 
-  /// A parameter setter
-  /// See semantic_source().
-  /// @param semantic_source the semantic source
-  /// 0: LiDAR, 1: camera
-  void semantic_source(int semantic_source);
-
  protected:
   // Params
   // NOTE(alexmillane): See the getters above for a description.
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
-  int semantic_source_ = 0;
 
   // TODO(gogojjh): the main function to implement the GPU-based integration
   // Given a set of blocks in view (block_indices) perform TSDF updates on all
@@ -128,13 +142,26 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   //                             sensor, TsdfLayer* layer, std::vector<Index3D>*
   //                             updated_blocks = nullptr);
 
+  // Takes a list of block indices and returns a subset containing the block
+  // indices containing at least on voxel inside the truncation band of the
+  // passed TSDF layer.
+  std::vector<Index3D> reduceBlocksToThoseInTruncationBand(
+      const std::vector<Index3D>& block_indices, const TsdfLayer& tsdf_layer,
+      const float truncation_distance_m);
+
   // Blocks to integrate on the current call (indices and pointers)
   // NOTE(alexmillane): We have one pinned host and one device vector and
   // transfer between them.
   device_vector<Index3D> block_indices_device_;
-  device_vector<TsdfBlock*> block_ptrs_device_;
+  device_vector<SemanticBlock*> block_ptrs_device_;
   host_vector<Index3D> block_indices_host_;
-  host_vector<TsdfBlock*> block_ptrs_host_;
+  host_vector<SemanticBlock*> block_ptrs_host_;
+
+  // Buffers for getting blocks in truncation band
+  device_vector<const TsdfBlock*> truncation_band_block_ptrs_device_;
+  host_vector<const TsdfBlock*> truncation_band_block_ptrs_host_;
+  device_vector<bool> block_in_truncation_band_device_;
+  host_vector<bool> block_in_truncation_band_host_;
 
   // CUDA stream to process ingration on
   cudaStream_t integration_stream_;

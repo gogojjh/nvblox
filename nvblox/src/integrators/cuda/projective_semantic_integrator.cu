@@ -24,19 +24,24 @@ limitations under the License.
 #include "nvblox/utils/weight_function.h"
 
 namespace nvblox {
-template void ProjectiveSemanticIntegrator::integrateFrame(
+template void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
-    const Camera& sensor, const TsdfLayer& tsdf_layer,
+    const Camera& camera, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
 
-template void ProjectiveSemanticIntegrator::integrateFrame(
+template void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
-    const Lidar& sensor, const TsdfLayer& tsdf_layer,
+    const CameraPinhole& camera, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
 
-template void ProjectiveSemanticIntegrator::integrateFrame(
-    const SemanticImage& semantic_frame, const Transform& T_L_C,
-    const OSLidar& sensor, const TsdfLayer& tsdf_layer,
+template void ProjectiveSemanticIntegrator::integrateLidarFrame(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_L_C, const Lidar& lidar, const TsdfLayer& tsdf_layer,
+    SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
+
+template void ProjectiveSemanticIntegrator::integrateLidarFrame(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_L_C, const OSLidar& lidar, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
 
 }  // namespace nvblox
@@ -638,11 +643,6 @@ void ProjectiveSemanticIntegrator::
   lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = value;
 }
 
-void ProjectiveSemanticIntegrator::semantic_source(int semantic_source) {
-  CHECK_GT(semantic_source, -1);
-  semantic_source_ = semantic_source;
-}
-
 /// TODO(gogojjh): finish these functions
 // template <typename SensorType>
 // void ProjectiveSemanticIntegrator::integrateFrameTemplate(
@@ -684,14 +684,68 @@ void ProjectiveSemanticIntegrator::semantic_source(int semantic_source) {
 //   }
 // }
 
-template <typename SensorType>
-void ProjectiveSemanticIntegrator::integrateFrame(
+template <typename CameraType>
+void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
-    const SensorType& sensor, const TsdfLayer& tsdf_layer,
+    const CameraType& camera, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
-  // CHECK_NOTNULL(semantic_layer);
-  LOG(INFO) << "ProjectiveSemanticIntegrator::integrateFrame";
+  LOG(INFO) << "ProjectiveSemanticIntegrator::integrateFrame<CameraType>";
+  CHECK_NOTNULL(semantic_layer);
   /// NOTE(gogojjh) integrateFrameTemplate
+}
+
+template <typename LidarType>
+void ProjectiveSemanticIntegrator::integrateLidarFrame(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_L_C, const LidarType& lidar, const TsdfLayer& tsdf_layer,
+    SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
+  CHECK_NOTNULL(semantic_layer);
+  timing::Timer tsdf_timer("semantic/integrate");
+
+  // Metric truncation distance for this layer
+  const float voxel_size =
+      semantic_layer->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
+  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
+  LOG(INFO) << "truncation_distance_m: " << truncation_distance_m;
+
+  // Identify blocks we can (potentially) see
+  timing::Timer blocks_in_view_timer("semantic/integrate/get_blocks_in_view");
+  std::vector<Index3D> block_indices =
+      view_calculator_.getBlocksInImageViewRaycast(
+          depth_frame, T_L_C, lidar, semantic_layer->block_size(),
+          truncation_distance_m, max_integration_distance_m_);
+  LOG(INFO) << "block_indices size: " << block_indices.size();
+  blocks_in_view_timer.Stop();
+
+  // Check which of these blocks are:
+  // - Allocated in the TSDF, and
+  // - have at least a single voxel within the truncation band
+  // This is because:
+  // - We don't allocate new geometry here, we just color existing geometry
+  // - We don't color freespace.
+  timing::Timer blocks_in_band_timer(
+      "semantic/integrate/reduce_to_blocks_in_band");
+  block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
+                                                      truncation_distance_m);
+  LOG(INFO) << "(remining after removal) block_indices size: "
+            << block_indices.size();
+  blocks_in_band_timer.Stop();
+
+  // Allocate blocks (CPU)
+  timing::Timer allocate_blocks_timer("semantic/integrate/allocate_blocks");
+  allocateBlocksWhereRequired(block_indices, semantic_layer);
+  allocate_blocks_timer.Stop();
+
+  // Update identified blocks
+  timing::Timer update_blocks_timer("semantic/integrate/update_blocks");
+  // integrateBlocksTemplate<SensorType>(block_indices, depth_frame, T_L_C,
+  // sensor,
+  //                                     layer);
+  update_blocks_timer.Stop();
+
+  if (updated_blocks != nullptr) {
+    *updated_blocks = block_indices;
+  }
 }
 
 // // Camera
@@ -864,5 +918,111 @@ void ProjectiveSemanticIntegrator::integrateFrame(
 //   // Calling the GPU to do the updates
 //   integrateBlocks(depth_frame, T_C_L, sensor, layer_ptr);
 // }
+
+inline __global__ void checkBlocksInTruncationBand(
+    const VoxelBlock<TsdfVoxel>** block_device_ptrs,
+    const float truncation_distance_m,
+    bool* contains_truncation_band_device_ptr) {
+  // A single thread in each block initializes the output to 0
+  if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0) {
+    contains_truncation_band_device_ptr[blockIdx.x] = 0;
+  }
+  __syncthreads();
+
+  // Get the Voxel we'll check in this thread
+  const TsdfVoxel voxel = block_device_ptrs[blockIdx.x]
+                              ->voxels[threadIdx.z][threadIdx.y][threadIdx.x];
+
+  // If this voxel in the truncation band, write the flag to say that the block
+  // should be processed.
+  // NOTE(alexmillane): There will be collision on write here. However, from my
+  // reading, all threads' writes will result in a single write to global
+  // memory. Because we only write a single value (1) it doesn't matter which
+  // thread "wins".
+  if (std::abs(voxel.distance) <= truncation_distance_m) {
+    contains_truncation_band_device_ptr[blockIdx.x] = true;
+  }
+}
+
+std::vector<Index3D>
+ProjectiveSemanticIntegrator::reduceBlocksToThoseInTruncationBand(
+    const std::vector<Index3D>& block_indices, const TsdfLayer& tsdf_layer,
+    const float truncation_distance_m) {
+  LOG(INFO) << "check 1";
+
+  // Check 1) Are the blocks allocated
+  // - performed on the CPU because the hash-map is on the CPU
+  std::vector<Index3D> block_indices_check_1;
+  block_indices_check_1.reserve(block_indices.size());
+  for (const Index3D& block_idx : block_indices) {
+    if (tsdf_layer.isBlockAllocated(block_idx)) {
+      block_indices_check_1.push_back(block_idx);
+    }
+  }
+
+  if (block_indices_check_1.empty()) {
+    return block_indices_check_1;
+  }
+
+  LOG(INFO) << "check 2";
+
+  // Check 2) Does each of the blocks have a voxel within the truncation band
+  // - performed on the GPU because the blocks are there
+  // Get the blocks we need to check
+  std::vector<const TsdfBlock*> block_ptrs =
+      getBlockPtrsFromIndices(block_indices_check_1, tsdf_layer);
+
+  const int num_blocks = block_ptrs.size();
+  LOG(INFO) << "num_blocks: " << num_blocks;
+
+  // Expand the buffers when needed
+  if (num_blocks > truncation_band_block_ptrs_device_.size()) {
+    constexpr float kBufferExpansionFactor = 1.5f;
+    const int new_size = static_cast<int>(kBufferExpansionFactor * num_blocks);
+    truncation_band_block_ptrs_host_.reserve(new_size);
+    truncation_band_block_ptrs_device_.reserve(new_size);
+    block_in_truncation_band_device_.reserve(new_size);
+    block_in_truncation_band_host_.reserve(new_size);
+  }
+
+  // Host -> Device
+  truncation_band_block_ptrs_host_ = block_ptrs;
+  truncation_band_block_ptrs_device_ = truncation_band_block_ptrs_host_;
+
+  // Prepare output space
+  block_in_truncation_band_device_.resize(num_blocks);
+
+  // Do the check on GPU
+  // Kernel call - One ThreadBlock launched per VoxelBlock
+  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
+  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
+  const int num_thread_blocks = num_blocks;
+
+  // clang-format off
+  checkBlocksInTruncationBand
+    <<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
+      truncation_band_block_ptrs_device_.data(),
+      truncation_distance_m,
+      block_in_truncation_band_device_.data());
+  // clang-format on
+
+  checkCudaErrors(cudaStreamSynchronize(integration_stream_));
+  checkCudaErrors(cudaPeekAtLastError());
+
+  // Copy results back
+  block_in_truncation_band_host_ = block_in_truncation_band_device_;
+
+  // Filter the indices using the result
+  std::vector<Index3D> block_indices_check_2;
+  block_indices_check_2.reserve(block_indices_check_1.size());
+  for (int i = 0; i < block_indices_check_1.size(); i++) {
+    if (block_in_truncation_band_host_[i] == true) {
+      block_indices_check_2.push_back(block_indices_check_1[i]);
+    }
+  }
+  LOG(INFO) << block_indices_check_2.size();
+
+  return block_indices_check_2;
+}
 
 }  // namespace nvblox

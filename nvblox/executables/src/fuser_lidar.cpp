@@ -125,8 +125,6 @@ FuserLidar::FuserLidar(
   mapper_->semantic_integrator().max_integration_distance_m(1.0f);
   mapper_->semantic_integrator().view_calculator().raycast_subsampling_factor(
       4);
-  /// NOTE(gogojjh): The semantic source. 0: LiDAR, 1: camera
-  mapper_->semantic_integrator().semantic_source(0);
 
   // Pick commands off the command line
   readCommandLineFlags();
@@ -400,7 +398,7 @@ void FuserLidar::setEsdfMode(RgbdMapper::EsdfMode esdf_mode) {
   esdf_mode_ = esdf_mode;
 }
 
-// NOTE(gogojjh): this function will run the tsdf, mesh, and esdf integration
+///// NOTE(gogojjh): this function will run the tsdf, mesh, and esdf integration
 // for each incoming frame
 bool FuserLidar::integrateFrame(const int frame_number) {
   timing::Timer timer_file("fuser/file_loading");
@@ -412,34 +410,33 @@ bool FuserLidar::integrateFrame(const int frame_number) {
   CameraPinhole camera;
   OSLidar oslidar;
   datasets::DataLoadResult load_result;
-  /// NOTE(gogojjh): load color_frame and semantic_frame
+  ///// NOTE(gogojjh): load color_frame and semantic_frame
   if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ > 0) {
     load_result =
         data_loader_->loadNext(&depth_frame, &T_W_B, &camera, &oslidar,
                                &height_frame, &color_frame, &semantic_frame);
-    LOG(INFO) << "Loading color_frame and semantic_frame";
+    // LOG(INFO) << "Loading color_frame and semantic_frame";
   }
-  /// NOTE(gogojjh): load color_frame, not load semantic_frame
+  ///// NOTE(gogojjh): load color_frame, not load semantic_frame
   else if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ < 0) {
     load_result =
         data_loader_->loadNext(&depth_frame, &T_W_B, &camera, &oslidar,
                                &height_frame, &color_frame, nullptr);
-    LOG(INFO) << "Loading color_frame";
+    // LOG(INFO) << "Loading color_frame";
   }
-  /// NOTE(gogojjh): not load color_frame, load semantic_frame
+  ///// NOTE(gogojjh): not load color_frame, load semantic_frame
   else if (color_frame_subsampling_ < 0 && semantic_frame_subsampling_ > 0) {
     load_result =
         data_loader_->loadNext(&depth_frame, &T_W_B, nullptr, &oslidar,
                                &height_frame, nullptr, &semantic_frame);
-    LOG(INFO) << "Loading semantic_frame";
+    // LOG(INFO) << "Loading semantic_frame";
   }
-
-  /// NOTE(gogojjh): not load color_frame and semantic_frame
+  ///// NOTE(gogojjh): not load color_frame and semantic_frame
   else if (color_frame_subsampling_ < 0 && semantic_frame_subsampling_ < 0) {
     load_result =
         data_loader_->loadNext(&depth_frame, &T_W_B, nullptr, &oslidar,
                                &height_frame, nullptr, nullptr);
-    LOG(INFO) << "Not loading color_frame and semantic_frame";
+    // LOG(INFO) << "Not loading color_frame and semantic_frame";
   }
   timer_file.Stop();
 
@@ -467,11 +464,11 @@ bool FuserLidar::integrateFrame(const int frame_number) {
     mapper_->integrateOSLidarDepth(depth_frame, T_W_B, oslidar);
     timer_integrate.Stop();
 
-    /// NOTE(gogojjh): integrate semantic frame using semantic_integrator
     if (semantic_frame_subsampling_ > 0) {
       if ((frame_number + 1) % semantic_frame_subsampling_ == 0) {
         timing::Timer timer_integrate_semantic("fuser/integrate_semantic");
-        mapper_->integrateSemantic(semantic_frame, T_W_B, oslidar);
+        mapper_->integrateLidarSemantic(depth_frame, semantic_frame, T_W_B,
+                                        oslidar);
         timer_integrate_semantic.Stop();
       }
     }

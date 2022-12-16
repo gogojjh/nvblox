@@ -393,7 +393,7 @@ void ProjectiveColorIntegrator::updateBlocks(
   finish();
 }
 
-__global__ void checkBlocksInTruncationBand(
+inline __global__ void checkBlocksInTruncationBand(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,
     const float truncation_distance_m,
     bool* contains_truncation_band_device_ptr) {
@@ -466,12 +466,14 @@ ProjectiveColorIntegrator::reduceBlocksToThoseInTruncationBand(
   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
   const int num_thread_blocks = num_blocks;
+
   // clang-format off
   checkBlocksInTruncationBand<<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
       truncation_band_block_ptrs_device_.data(),
       truncation_distance_m,
       block_in_truncation_band_device_.data());
   // clang-format on
+
   checkCudaErrors(cudaStreamSynchronize(integration_stream_));
   checkCudaErrors(cudaPeekAtLastError());
 
