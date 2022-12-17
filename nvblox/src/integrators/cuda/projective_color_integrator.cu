@@ -62,12 +62,15 @@ void ProjectiveColorIntegrator::integrateFrame(
   const float voxel_size =
       color_layer->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
   const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
+  LOG(INFO) << "[color] Truncation distance: " << truncation_distance_m;
 
   // Get visible blocks
   timing::Timer blocks_in_view_timer("color/integrate/get_blocks_in_view");
   std::vector<Index3D> block_indices = view_calculator_.getBlocksInViewPlanes(
       T_L_C, camera, color_layer->block_size(),
       max_integration_distance_m_ + truncation_distance_m);
+  // NOTE(gogojjh): comment to be removed
+  LOG(INFO) << "[color] block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
   // Check which of these blocks are:
@@ -80,6 +83,9 @@ void ProjectiveColorIntegrator::integrateFrame(
       "color/integrate/reduce_to_blocks_in_band");
   block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
                                                       truncation_distance_m);
+  // NOTE(gogojjh): comment to be removed
+  LOG(INFO) << "[color] (remining after removal) block_indices size: "
+            << block_indices.size();
   blocks_in_band_timer.Stop();
 
   // Allocate blocks (CPU)
@@ -393,7 +399,7 @@ void ProjectiveColorIntegrator::updateBlocks(
   finish();
 }
 
-inline __global__ void checkBlocksInTruncationBand(
+__global__ void checkBlocksInTruncationBand(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,
     const float truncation_distance_m,
     bool* contains_truncation_band_device_ptr) {
@@ -468,7 +474,8 @@ ProjectiveColorIntegrator::reduceBlocksToThoseInTruncationBand(
   const int num_thread_blocks = num_blocks;
 
   // clang-format off
-  checkBlocksInTruncationBand<<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
+  checkBlocksInTruncationBand
+    <<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
       truncation_band_block_ptrs_device_.data(),
       truncation_distance_m,
       block_in_truncation_band_device_.data());

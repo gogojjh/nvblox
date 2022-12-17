@@ -5,7 +5,7 @@ make && \
 	/Spy/dataset/mapping_results/nvblox/semantickitti_sequence07/ \
 	--tsdf_integrator_max_integration_distance_m 70.0 \
 	--semantic_integrator_max_integration_distance_m 70.0 \
-	--num_frames 1 \
+	--num_frames 10 \
 	--voxel_size 0.1 \
 	--tsdf_frame_subsampling 1 \
 	--mesh_frame_subsampling 20 \

@@ -706,7 +706,7 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   const float voxel_size =
       semantic_layer->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
   const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
-  LOG(INFO) << "truncation_distance_m: " << truncation_distance_m;
+  LOG(INFO) << "[semantic] Truncation distance: " << truncation_distance_m;
 
   // Identify blocks we can (potentially) see
   timing::Timer blocks_in_view_timer("semantic/integrate/get_blocks_in_view");
@@ -714,7 +714,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
       view_calculator_.getBlocksInImageViewRaycast(
           depth_frame, T_L_C, lidar, semantic_layer->block_size(),
           truncation_distance_m, max_integration_distance_m_);
-  LOG(INFO) << "block_indices size: " << block_indices.size();
+  // NOTE(gogojjh): comment to be removed
+  LOG(INFO) << "[semantic] block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
   // Check which of these blocks are:
@@ -727,7 +728,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
       "semantic/integrate/reduce_to_blocks_in_band");
   block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
                                                       truncation_distance_m);
-  LOG(INFO) << "(remining after removal) block_indices size: "
+  // NOTE(gogojjh): comment to be removed
+  LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
             << block_indices.size();
   blocks_in_band_timer.Stop();
 
@@ -738,9 +740,9 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
 
   // Update identified blocks
   timing::Timer update_blocks_timer("semantic/integrate/update_blocks");
-  // integrateBlocksTemplate<SensorType>(block_indices, depth_frame, T_L_C,
-  // sensor,
-  //                                     layer);
+  // TODO(gogojjh): update blocks according to semantic_frame with depth_frame
+  // updateBlocks(block_indices, depth_frame, semantic_frame, T_L_C, sensor,
+  //              tsdf_layer, semantic_layer);
   update_blocks_timer.Stop();
 
   if (updated_blocks != nullptr) {
@@ -919,7 +921,7 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
 //   integrateBlocks(depth_frame, T_C_L, sensor, layer_ptr);
 // }
 
-inline __global__ void checkBlocksInTruncationBand(
+__global__ void checkBlocksInTruncationBandSemantics(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,
     const float truncation_distance_m,
     bool* contains_truncation_band_device_ptr) {
@@ -927,6 +929,7 @@ inline __global__ void checkBlocksInTruncationBand(
   if (threadIdx.x == 0 && threadIdx.y == 0 && threadIdx.z == 0) {
     contains_truncation_band_device_ptr[blockIdx.x] = 0;
   }
+  // An function of CUDA to synchronize threads
   __syncthreads();
 
   // Get the Voxel we'll check in this thread
@@ -948,8 +951,6 @@ std::vector<Index3D>
 ProjectiveSemanticIntegrator::reduceBlocksToThoseInTruncationBand(
     const std::vector<Index3D>& block_indices, const TsdfLayer& tsdf_layer,
     const float truncation_distance_m) {
-  LOG(INFO) << "check 1";
-
   // Check 1) Are the blocks allocated
   // - performed on the CPU because the hash-map is on the CPU
   std::vector<Index3D> block_indices_check_1;
@@ -963,8 +964,6 @@ ProjectiveSemanticIntegrator::reduceBlocksToThoseInTruncationBand(
   if (block_indices_check_1.empty()) {
     return block_indices_check_1;
   }
-
-  LOG(INFO) << "check 2";
 
   // Check 2) Does each of the blocks have a voxel within the truncation band
   // - performed on the GPU because the blocks are there
@@ -998,13 +997,10 @@ ProjectiveSemanticIntegrator::reduceBlocksToThoseInTruncationBand(
   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
   const int num_thread_blocks = num_blocks;
 
-  // clang-format off
-  checkBlocksInTruncationBand
-    <<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
-      truncation_band_block_ptrs_device_.data(),
-      truncation_distance_m,
+  checkBlocksInTruncationBandSemantics<<<num_thread_blocks, kThreadsPerBlock, 0,
+                                         integration_stream_>>>(
+      truncation_band_block_ptrs_device_.data(), truncation_distance_m,
       block_in_truncation_band_device_.data());
-  // clang-format on
 
   checkCudaErrors(cudaStreamSynchronize(integration_stream_));
   checkCudaErrors(cudaPeekAtLastError());
@@ -1020,7 +1016,6 @@ ProjectiveSemanticIntegrator::reduceBlocksToThoseInTruncationBand(
       block_indices_check_2.push_back(block_indices_check_1[i]);
     }
   }
-  LOG(INFO) << block_indices_check_2.size();
 
   return block_indices_check_2;
 }

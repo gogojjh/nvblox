@@ -782,9 +782,7 @@ void ProjectiveTsdfIntegrator::integrateBlocks(const DepthImage& depth_frame,
                    voxel_size,
                2);
 
-  // Kernel
-  // std::cout << "num_thread_blocks: " << num_thread_blocks << std::endl;
-  // std::cout << "kVoxelsPerSide: " << kVoxelsPerSide << std::endl;
+  // OSLidar Kernel
   integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
                           integration_stream_>>>(
       block_indices_device_.data(),                               // NOLINT

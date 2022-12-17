@@ -13,7 +13,7 @@
 		> * set <code>voxel_size</code> and <code>truncation_distance</code>, <code>truncation_distance_m = truncation_distance_vox * voxel_size</code>
 		> * Identify blocks given the camera view: <code>view_calculator_.getBlocksInImageViewRaycast</code>
 		>   * <code>getBlocksByRaycastingPixels</code>: Raycasts through (possibly subsampled) pixels in the image, use the kernal function
-		>   * <code>combinedBlockIndicesInImageKernel</code>: retrieve visiable block by raycasting voxels, done in GPU
+		>   * <code>combinedBlockIndicesInImageKernel</code>: retrieve visiable block by raycasting voxels (spacing carving), done in GPU
 		> * TSDF integration given block indices: <code>integrateBlocksTemplate</code>
 		>   * <code>ProjectiveTsdfIntegrator::integrateBlocks</code>: block integration for the OSLidar, use the kernal function
 		>   * <code>integrateBlocksKernel</code>: TSDF integration for each block, done in GPU

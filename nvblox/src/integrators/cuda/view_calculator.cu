@@ -154,6 +154,7 @@ __global__ void raycastToBlocksKernel(int num_blocks, Index3D* block_indices,
   }
 }
 
+// NOTE(gogojjh): need to figure out the logics
 template <typename SensorType>
 __global__ void combinedBlockIndicesInImageKernel(
     const Transform T_L_C, const SensorType camera, const float* image,
@@ -202,7 +203,6 @@ __global__ void combinedBlockIndicesInImageKernel(
   setIndexUpdated(block_index, aabb_min, aabb_size, aabb_updated);
 
   // Ok raycast to the correct point in the block.
-  ///// NOTE(gogojjh): retrieve all voxels interacts with the ray
   RayCaster raycaster(T_L_C.translation() / block_size, p_L / block_size);
   Index3D ray_index = Index3D::Zero();
   while (raycaster.nextRayIndex(&ray_index)) {
