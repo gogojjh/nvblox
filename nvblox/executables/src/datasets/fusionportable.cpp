@@ -193,9 +193,11 @@ DataLoadResult DataLoader::loadNext(
     ColorImage* color_frame_ptr, SemanticImage* semantic_frame_ptr) {
   CHECK_NOTNULL(depth_frame_ptr);
   CHECK_NOTNULL(T_L_C_ptr);
-  CHECK_NOTNULL(camera_ptr);
   CHECK_NOTNULL(lidar_ptr);
   CHECK_NOTNULL(height_frame_ptr);
+  // CHECK_NOTNULL(camera_ptr);
+  // CHECK_NOTNULL(color_frame_ptr);
+  // CHECK_NOTNULL(semantic_frame_ptr);
 
   // Because we might fail along the way, increment the frame number before we
   // start.
