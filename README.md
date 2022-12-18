@@ -1,56 +1,7 @@
 # Nvblox-modify
 
-#### Code Pipeline of NVBlox
+[Pipeline of NVBLOX](docs/code_review_nvblox.md)
 
-1. Data loader
-
-2. Frame integration
-
-	1. After loading data (the code API): Fuser::integrateFrame(const int frame_number)
-
-	2. RgbdMapper::integrateOSLidarDepth -> ProjectiveTsdfIntegrator::integrateFrame -> ProjectiveTsdfIntegrator::integrateFrameTemplate 
-
-		> * set <code>voxel_size</code> and <code>truncation_distance</code>, <code>truncation_distance_m = truncation_distance_vox * voxel_size</code>
-		> * Identify blocks given the camera view: <code>view_calculator_.getBlocksInImageViewRaycast</code>
-		>   * <code>getBlocksByRaycastingPixels</code>: Raycasts through (possibly subsampled) pixels in the image, use the kernal function
-		>   * <code>combinedBlockIndicesInImageKernel</code>: retrieve visiable block by raycasting voxels (spacing carving), done in GPU
-		> * TSDF integration given block indices: <code>integrateBlocksTemplate</code>
-		>   * <code>ProjectiveTsdfIntegrator::integrateBlocks</code>: block integration for the OSLidar, use the kernal function
-		>   * <code>integrateBlocksKernel</code>: TSDF integration for each block, done in GPU
-		>     * <code>projectThreadVoxel</code>: convert blocks' indices into coordinates, retrieve voxels from the block, and project them onto the image to check whether they are visible or not
-		>     * <code>interpolateOSLidarImage</code>: linear interpolation of depth images given float coordinates
-		>       * ```const Index2D u_M_rounded = u_px.array().round().cast<int>();```
-		>       * ```u_M_rounded.x() < 0 || u_M_rounded.y() < 0 || u_M_rounded.x() >= cols || u_M_rounded.y() >= rows)```: check bounds
-		>     * <code>updateVoxel</code>: update the TSDF values of all visible voxels. 
-
-3. Semantic frame integration
-	1. ProjectiveSemanticIntegrator::integrateLidarFrame
-	> * <code>block_indices = view_calculator_.getBlocksInImageViewRaycast()</code>
-	>   * <code>AxisAlignedBoundingBox aabb_L = sensor.getViewAABB(T_L_C, 0.0f, max_integration_distance_m)</code>: get the AABB of the sensors' view. The maximum distance=max_integration_distance_m
-	>		* <code>ViewCalculator::getBlocksByRaycastingPixels</code>: get valid blocks by raycasting each pixel along the ray in parallel (from the origin to depth + truncation_distance_m), get aabb_device_buffer[i] = true
-	>   * <code>block_indices = reduceBlocksToThoseInTruncationBand</code>: remove blocks if they do not contain any voxels stay with the truncation band: 
-	abs(voxel.distance) is smaller than truncation_distance_m
-
-4. Weight averaging methods
-    ```
-    Projective distance:
-        1: constant weight, truncate the fused_distance
-        2: constant weight, truncate the voxel_distance_measured
-        3: linear weight, truncate the voxel_distance_measured
-        4: exponential weight, truncate the voxel_distance_measured
-    Non-Projective distance:
-        5: weight and distance derived from VoxField
-        6: linear weight, distance derived from VoxField
-    ```
-
-3. Output data
-    1. Mesh map
-    2. ESDF map
-    3. Obstacle map: points from the ESDF map whose distance is smaller than a threshold
-
-4. Global planning test
-
--------------------------- 
 ### Build the NVBlox
 1. Install dependencies (suggest using the docker image)
     ```

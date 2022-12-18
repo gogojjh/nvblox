@@ -8,7 +8,6 @@ target_include_directories(nvblox_datasets PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>
 )
-
 target_link_libraries(nvblox_datasets nvblox_lib)
 set_target_properties(nvblox_datasets PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 

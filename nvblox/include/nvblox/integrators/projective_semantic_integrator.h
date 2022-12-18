@@ -117,15 +117,16 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
 
   template <typename SensorType>
-  void updateBlocksTemplate(const std::vector<Index3D>& block_indices,
-                            const DepthImage& depth_frame,
-                            const SemanticImage& semantic_frame,
-                            const Transform& T_L_C, const SensorType& sensor,
-                            SemanticLayer* layer_ptr);
+  void integrateBlocksTemplate(const std::vector<Index3D>& block_indices,
+                               const DepthImage& depth_frame,
+                               const SemanticImage& semantic_frame,
+                               const Transform& T_L_C, const SensorType& sensor,
+                               SemanticLayer* layer_ptr);
 
-  void updateBlocks(const DepthImage& depth_frame,
-                    const SemanticImage& semantic_frame, const Transform& T_C_L,
-                    const OSLidar& lidar, SemanticLayer* layer_ptr);
+  void integrateBlocks(const DepthImage& depth_frame,
+                       const SemanticImage& semantic_frame,
+                       const Transform& T_C_L, const OSLidar& lidar,
+                       SemanticLayer* layer_ptr);
 
   // Takes a list of block indices and returns a subset containing the block
   // indices containing at least on voxel inside the truncation band of the

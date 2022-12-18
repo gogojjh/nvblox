@@ -36,12 +36,13 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 }  // namespace nvblox
 
 namespace nvblox {
-// NOTE(gogojjh): the original nvblox implementation
-__device__ inline bool updateVoxel(const float surface_depth_measured,
-                                   TsdfVoxel* voxel_ptr,
-                                   const float voxel_depth_m,
-                                   const float truncation_distance_m,
-                                   const float max_weight) {
+// TODO(gogojjh): the original nvblox implementation
+__device__ inline bool updateSemanticVoxel(const float surface_depth_measured,
+                                           const uint16_t semantic_label,
+                                           SemanticVoxel* voxel_ptr,
+                                           const float voxel_depth_m,
+                                           const float truncation_distance_m,
+                                           const float max_weight) {
   // Get the MEASURED depth of the VOXEL
   float voxel_distance_measured = surface_depth_measured - voxel_depth_m;
 
@@ -50,26 +51,23 @@ __device__ inline bool updateVoxel(const float surface_depth_measured,
     return false;
   }
 
-  // Read CURRENT voxel values (from global GPU memory)
-  const float voxel_distance_current = voxel_ptr->distance;
-  const float voxel_weight_current = voxel_ptr->weight;
-
-  // Fuse
-  constexpr float measurement_weight = 1.0f;
-  float fused_distance = (voxel_distance_measured * measurement_weight +
-                          voxel_distance_current * voxel_weight_current) /
-                         (measurement_weight + voxel_weight_current);
-  // Clip
-  if (fused_distance > 0.0f) {
-    fused_distance = fminf(truncation_distance_m, fused_distance);
-  } else {
-    fused_distance = fmaxf(-truncation_distance_m, fused_distance);
+  // updateSemanticVoxelProbabilities
+  SemanticProbabilities semantic_label_frequencies =
+      SemanticProbabilities::Zero();
+  if (semantic_label > semantic_label_frequencies.size()) {
+    return false;
   }
-  const float weight =
-      fminf(measurement_weight + voxel_weight_current, max_weight);
-  // Write NEW voxel values (to global GPU memory)
-  voxel_ptr->distance = fused_distance;
-  voxel_ptr->weight = weight;
+
+  // updateSemanticVoxel label by the MLE
+  semantic_label_frequencies[semantic_label] += 1.0f;
+  float semantic_log_likelihood = 0.3f;
+  voxel_ptr->semantic_priors +=
+      semantic_label_frequencies * semantic_log_likelihood;
+  voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
+
+  // updateSemanticVoxel color
+  voxel_ptr->color = Color(voxel_ptr->semantic_label, voxel_ptr->semantic_label,
+                           voxel_ptr->semantic_label);
   return true;
 }
 
@@ -370,7 +368,6 @@ __device__ inline bool interpolateOSLidarImage(
   return true;
 }
 
-// NOTE(gogojjh):
 __device__ inline bool getPointVectorOSLidar(const OSLidar& lidar,
                                              const Index2D& u_C, const int rows,
                                              const int cols,
@@ -388,7 +385,6 @@ __device__ inline bool getPointVectorOSLidar(const OSLidar& lidar,
   }
 }
 
-// NOTE(gogojjh):
 __device__ inline bool getNormalVectorOSLidar(const OSLidar& lidar,
                                               const Index2D& u_C,
                                               const int rows, const int cols,
@@ -459,9 +455,8 @@ __device__ inline bool getNormalVectorOSLidar(const OSLidar& lidar,
 // OSLiDAR
 __global__ void integrateBlocksKernel(
     const Index3D* block_indices_device_ptr, const OSLidar lidar,
-    const uint16_t* semantic_image, int semantic_rows, int semantic_cols,
-    const float* depth_image, int depth_rows, int depth_cols,
-    const Transform T_C_L, const float block_size,
+    const uint16_t* semantic_image, const float* depth_image, int rows,
+    int cols, const Transform T_C_L, const float block_size,
     const float truncation_distance_m, const float max_weight,
     const float max_integration_distance,
     const float linear_interpolation_max_allowable_difference_m,
@@ -472,73 +467,82 @@ __global__ void integrateBlocksKernel(
   // thread
   //     - the depth associated with the projection.
   //     - the projected image coordinate of the voxel
-  // Eigen::Vector2f u_px;
-  // float voxel_depth_m;
-  // Vector3f p_voxel_center_C;
-  // if (!projectThreadVoxel(block_indices_device_ptr, lidar, T_C_L, block_size,
-  //                         &u_px, &voxel_depth_m, &p_voxel_center_C)) {
-  //   return;  // false: the voxel is not visible
-  // }
+  Eigen::Vector2f u_px;
+  float voxel_depth_m;
+  Vector3f p_voxel_center_C;
+  if (!projectThreadVoxel(block_indices_device_ptr, lidar, T_C_L, block_size,
+                          &u_px, &voxel_depth_m, &p_voxel_center_C)) {
+    return;  // false: the voxel is not visible
+  }
 
-  // // If voxel further away than the limit, skip this voxel
-  // if (max_integration_distance > 0.0f) {
-  //   if (voxel_depth_m > max_integration_distance) {
-  //     return;
-  //   }
-  // }
+  // If voxel further away than the limit, skip this voxel
+  if (max_integration_distance > 0.0f) {
+    if (voxel_depth_m > max_integration_distance) {
+      return;
+    }
+  }
 
-  // // function 2
-  // // Interpolate on the image plane
-  // float image_value;
-  // if (!interpolateOSLidarImage(
-  //         lidar, p_voxel_center_C, image, u_px, rows, cols,
-  //         linear_interpolation_max_allowable_difference_m,
-  //         nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-  //         &image_value)) {
-  //   return;
-  // }
+  // function 2
+  // Interpolate on the depth_image plane
+  float depth_image_value;
+  if (!interpolateOSLidarImage(
+          lidar, p_voxel_center_C, depth_image, u_px, rows, cols,
+          linear_interpolation_max_allowable_difference_m,
+          nearest_interpolation_max_allowable_squared_dist_to_ray_m,
+          &depth_image_value)) {
+    return;
+  }
 
-  // // Get the Voxel we'll update in this thread
-  // // NOTE(alexmillane): Note that we've reverse the voxel indexing order
-  // // such that adjacent threads (x-major) access adjacent memory locations
-  // // in the block (z-major).
-  // TsdfVoxel* voxel_ptr = &(block_device_ptrs[blockIdx.x]
-  //                              ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+  uint16_t semantic_image_value =
+      image::access(int(u_px.y()), int(u_px.x()), cols, semantic_image);
+  // NOTE(gogojjh)
+  // printf("%d ", semantic_image_value);
 
-  // // NOTE(gogojjh): retrive the normal vector given u_px
-  // const Index2D u_C = u_px.array().round().cast<int>();
-  // Vector3f point_vector = Vector3f::Zero();
-  // Vector3f normal_vector = Vector3f::Zero();
-  // if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
-  // if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
-  // // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),
-  // point_vector.y(),
-  //     //        point_vector.z(), normal_vector.x(), normal_vector.y(),
-  //     //        normal_vector.z());
+  // Get the Voxel we'll update in this thread
+  // NOTE(alexmillane): Note that we've reverse the voxel indexing order
+  // such that adjacent threads (x-major) access adjacent memory locations
+  // in the block (z-major).
+  SemanticVoxel* voxel_ptr =
+      &(block_device_ptrs[blockIdx.x]
+            ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
-  //     // function 3
-  //     // Update the voxel using the update rule for this layer type
-  //     // NOTE(gogojjh):
-  //     // setting the voxel update method
-  //     // Projective distance:
-  //     //  1: constant weight, truncate the fused_distance
-  //     //  2: constant weight, truncate the voxel_distance_measured
-  //     //  3: linear weight, truncate the voxel_distance_measured
-  //     //  4: exponential weight, truncate the voxel_distance_measured
-  //     // Non-Projective distance:
-  //     //  5: weight and distance derived from VoxField
-  //     //  6: linear weight, distance derived from VoxField
-  //     const int voxel_weight_method = 6;
-  // if (voxel_weight_method == 1) {
-  //   // the original nvblox impelentation
-  //   // not use normal vector
-  //   updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-  //               max_weight);
-  // } else {
+  // **********************************************************
+  // NOTE(gogojjh): retrive the normal vector given u_px
+  const Index2D u_C = u_px.array().round().cast<int>();
+  Vector3f point_vector = Vector3f::Zero();
+  Vector3f normal_vector = Vector3f::Zero();
+  if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
+  if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
+  // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),point_vector.y(),
+  //        point_vector.z(), normal_vector.x(), normal_vector.y(),
+  //        normal_vector.z());
+  // **********************************************************
+
+  // function 3
+  // Update the voxel using the update rule for this layer type
+  // NOTE(gogojjh):
+  // setting the voxel update method
+  // Projective distance:
+  //  1: constant weight, truncate the fused_distance
+  //  2: constant weight, truncate the voxel_distance_measured
+  //  3: linear weight, truncate the voxel_distance_measured
+  //  4: exponential weight, truncate the voxel_distance_measured
+  // Non-Projective distance:
+  //  5: weight and distance derived from VoxField
+  //  6: linear weight, distance derived from VoxField
+  const int voxel_weight_method = 1;
+  if (voxel_weight_method == 1) {
+    // the original nvblox impelentation
+    // not use normal vector
+    updateSemanticVoxel(depth_image_value, semantic_image_value, voxel_ptr,
+                        voxel_depth_m, truncation_distance_m, max_weight);
+  }
+
+  // else {
   //   // the improved weight computation
   //   // use normal vector
   //   updateVoxelMultiWeightComp(
-  //       image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
+  //       depth_image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
   //       max_weight, voxel_weight_method, point_vector, normal_vector, T_C_L);
   // }
 }
@@ -639,8 +643,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
 
   // Update identified blocks
   timing::Timer update_blocks_timer("semantic/integrate/update_blocks");
-  updateBlocksTemplate(block_indices, depth_frame, semantic_frame, T_L_C, lidar,
-                       semantic_layer);
+  integrateBlocksTemplate(block_indices, depth_frame, semantic_frame, T_L_C,
+                          lidar, semantic_layer);
   update_blocks_timer.Stop();
 
   if (updated_blocks != nullptr) {
@@ -649,7 +653,7 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
 }
 
 template <typename SensorType>
-void ProjectiveSemanticIntegrator::updateBlocksTemplate(
+void ProjectiveSemanticIntegrator::integrateBlocksTemplate(
     const std::vector<Index3D>& block_indices, const DepthImage& depth_frame,
     const SemanticImage& semantic_frame, const Transform& T_L_C,
     const SensorType& sensor, SemanticLayer* layer_ptr) {
@@ -681,12 +685,11 @@ void ProjectiveSemanticIntegrator::updateBlocksTemplate(
   // We need the inverse transform in the kernel
   const Transform T_C_L = T_L_C.inverse();
 
-  updateBlocks(depth_frame, semantic_frame, T_C_L, sensor, layer_ptr);
+  integrateBlocks(depth_frame, semantic_frame, T_C_L, sensor, layer_ptr);
 }
 
-// NOTE(gogojjh): only for OSLidar
 // OSLidar
-void ProjectiveSemanticIntegrator::updateBlocks(
+void ProjectiveSemanticIntegrator::integrateBlocks(
     const DepthImage& depth_frame, const SemanticImage& semantic_frame,
     const Transform& T_C_L, const OSLidar& lidar, SemanticLayer* layer_ptr) {
   LOG(INFO) << "updateBLocks";
@@ -716,8 +719,6 @@ void ProjectiveSemanticIntegrator::updateBlocks(
       block_indices_device_.data(),                               // NOLINT
       lidar,                                                      // NOLINT
       semantic_frame.dataConstPtr(),                              // NOLINT
-      semantic_frame.rows(),                                      // NOLINT
-      semantic_frame.cols(),                                      // NOLINT
       depth_frame.dataConstPtr(),                                 // NOLINT
       depth_frame.rows(),                                         // NOLINT
       depth_frame.cols(),                                         // NOLINT
