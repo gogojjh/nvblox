@@ -33,17 +33,6 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
     const CameraPinhole& camera, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
-
-template void ProjectiveSemanticIntegrator::integrateLidarFrame(
-    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_L_C, const Lidar& lidar, const TsdfLayer& tsdf_layer,
-    SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
-
-template void ProjectiveSemanticIntegrator::integrateLidarFrame(
-    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_L_C, const OSLidar& lidar, const TsdfLayer& tsdf_layer,
-    SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks);
-
 }  // namespace nvblox
 
 namespace nvblox {
@@ -467,145 +456,92 @@ __device__ inline bool getNormalVectorOSLidar(const OSLidar& lidar,
 //               max_weight);
 // }
 
-// // LIDAR
-// __global__ void integrateBlocksKernel(
-//     const Index3D* block_indices_device_ptr, const Lidar lidar,
-//     const float* image, int rows, int cols, const Transform T_C_L,
-//     const float block_size, const float truncation_distance_m,
-//     const float max_weight, const float max_integration_distance,
-//     const float linear_interpolation_max_allowable_difference_m,
-//     const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-//     TsdfBlock** block_device_ptrs) {
-//   // Get - the image-space projection of the voxel associated with this
-//   // thread
-//   //     - the depth associated with the projection.
-//   Eigen::Vector2f u_px;
-//   float voxel_depth_m;
-//   Vector3f p_voxel_center_C;
-//   if (!projectThreadVoxel(block_indices_device_ptr, lidar, T_C_L,
-//   block_size,
-//                           &u_px, &voxel_depth_m, &p_voxel_center_C)) {
-//     return;
-//   }
+// OSLiDAR
+__global__ void integrateBlocksKernel(
+    const Index3D* block_indices_device_ptr, const OSLidar lidar,
+    const uint16_t* semantic_image, int semantic_rows, int semantic_cols,
+    const float* depth_image, int depth_rows, int depth_cols,
+    const Transform T_C_L, const float block_size,
+    const float truncation_distance_m, const float max_weight,
+    const float max_integration_distance,
+    const float linear_interpolation_max_allowable_difference_m,
+    const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
+    SemanticBlock** block_device_ptrs) {
+  // function 1
+  // Get - the image-space projection of the voxel associated with this
+  // thread
+  //     - the depth associated with the projection.
+  //     - the projected image coordinate of the voxel
+  // Eigen::Vector2f u_px;
+  // float voxel_depth_m;
+  // Vector3f p_voxel_center_C;
+  // if (!projectThreadVoxel(block_indices_device_ptr, lidar, T_C_L, block_size,
+  //                         &u_px, &voxel_depth_m, &p_voxel_center_C)) {
+  //   return;  // false: the voxel is not visible
+  // }
 
-//   // If voxel further away than the limit, skip this voxel
-//   if (max_integration_distance > 0.0f) {
-//     if (voxel_depth_m > max_integration_distance) {
-//       return;
-//     }
-//   }
+  // // If voxel further away than the limit, skip this voxel
+  // if (max_integration_distance > 0.0f) {
+  //   if (voxel_depth_m > max_integration_distance) {
+  //     return;
+  //   }
+  // }
 
-//   // Interpolate on the image plane
-//   float image_value;
-//   if (!interpolateLidarImage(
-//           lidar, p_voxel_center_C, image, u_px, rows, cols,
-//           linear_interpolation_max_allowable_difference_m,
-//           nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-//           &image_value)) {
-//     return;
-//   }
+  // // function 2
+  // // Interpolate on the image plane
+  // float image_value;
+  // if (!interpolateOSLidarImage(
+  //         lidar, p_voxel_center_C, image, u_px, rows, cols,
+  //         linear_interpolation_max_allowable_difference_m,
+  //         nearest_interpolation_max_allowable_squared_dist_to_ray_m,
+  //         &image_value)) {
+  //   return;
+  // }
 
-//   // Get the Voxel we'll update in this thread
-//   // NOTE(alexmillane): Note that we've reverse the voxel indexing order
-//   // such that adjacent threads (x-major) access adjacent memory locations
-//   // in the block (z-major).
-//   TsdfVoxel* voxel_ptr = &(block_device_ptrs[blockIdx.x]
-//                                ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+  // // Get the Voxel we'll update in this thread
+  // // NOTE(alexmillane): Note that we've reverse the voxel indexing order
+  // // such that adjacent threads (x-major) access adjacent memory locations
+  // // in the block (z-major).
+  // TsdfVoxel* voxel_ptr = &(block_device_ptrs[blockIdx.x]
+  //                              ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
-//   // Update the voxel using the update rule for this layer type
-//   updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-//               max_weight);
-// }
+  // // NOTE(gogojjh): retrive the normal vector given u_px
+  // const Index2D u_C = u_px.array().round().cast<int>();
+  // Vector3f point_vector = Vector3f::Zero();
+  // Vector3f normal_vector = Vector3f::Zero();
+  // if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
+  // if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
+  // // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),
+  // point_vector.y(),
+  //     //        point_vector.z(), normal_vector.x(), normal_vector.y(),
+  //     //        normal_vector.z());
 
-// // OSLiDAR
-// // NOTE(gogojjh): main function to integrate blocks in GPU
-// __global__ void integrateBlocksKernel(
-//     const Index3D* block_indices_device_ptr, const OSLidar lidar,
-//     const float* image, int rows, int cols, const Transform T_C_L,
-//     const float block_size, const float truncation_distance_m,
-//     const float max_weight, const float max_integration_distance,
-//     const float linear_interpolation_max_allowable_difference_m,
-//     const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-//     TsdfBlock** block_device_ptrs) {
-//   // function 1
-//   // Get - the image-space projection of the voxel associated with this
-//   // thread
-//   //     - the depth associated with the projection.
-//   //     - the projected image coordinate of the voxel
-//   Eigen::Vector2f u_px;
-//   float voxel_depth_m;
-//   Vector3f p_voxel_center_C;
-//   if (!projectThreadVoxel(block_indices_device_ptr, lidar, T_C_L,
-//   block_size,
-//                           &u_px, &voxel_depth_m, &p_voxel_center_C)) {
-//     return;  // false: the voxel is not visible
-//   }
-
-//   // If voxel further away than the limit, skip this voxel
-//   if (max_integration_distance > 0.0f) {
-//     if (voxel_depth_m > max_integration_distance) {
-//       return;
-//     }
-//   }
-
-//   // function 2
-//   // Interpolate on the image plane
-//   float image_value;
-//   if (!interpolateOSLidarImage(
-//           lidar, p_voxel_center_C, image, u_px, rows, cols,
-//           linear_interpolation_max_allowable_difference_m,
-//           nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-//           &image_value)) {
-//     return;
-//   }
-
-//   // Get the Voxel we'll update in this thread
-//   // NOTE(alexmillane): Note that we've reverse the voxel indexing order
-//   // such that adjacent threads (x-major) access adjacent memory locations
-//   // in the block (z-major).
-//   TsdfVoxel* voxel_ptr = &(block_device_ptrs[blockIdx.x]
-//                                ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
-
-//   // NOTE(gogojjh): retrive the normal vector given u_px
-//   const Index2D u_C = u_px.array().round().cast<int>();
-//   Vector3f point_vector = Vector3f::Zero();
-//   Vector3f normal_vector = Vector3f::Zero();
-//   if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
-//   if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector))
-//   return;
-//   // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),
-//   point_vector.y(),
-//   //        point_vector.z(), normal_vector.x(), normal_vector.y(),
-//   //        normal_vector.z());
-
-//   // function 3
-//   // Update the voxel using the update rule for this layer type
-//   // NOTE(gogojjh):
-//   // setting the voxel update method
-//   // Projective distance:
-//   //  1: constant weight, truncate the fused_distance
-//   //  2: constant weight, truncate the voxel_distance_measured
-//   //  3: linear weight, truncate the voxel_distance_measured
-//   //  4: exponential weight, truncate the voxel_distance_measured
-//   // Non-Projective distance:
-//   //  5: weight and distance derived from VoxField
-//   //  6: linear weight, distance derived from VoxField
-//   const int voxel_weight_method = 6;
-//   if (voxel_weight_method == 1) {
-//     // the original nvblox impelentation
-//     // not use normal vector
-//     updateVoxel(image_value, voxel_ptr, voxel_depth_m,
-//     truncation_distance_m,
-//                 max_weight);
-//   } else {
-//     // the improved weight computation
-//     // use normal vector
-//     updateVoxelMultiWeightComp(
-//         image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-//         max_weight, voxel_weight_method, point_vector, normal_vector,
-//         T_C_L);
-//   }
-// }
+  //     // function 3
+  //     // Update the voxel using the update rule for this layer type
+  //     // NOTE(gogojjh):
+  //     // setting the voxel update method
+  //     // Projective distance:
+  //     //  1: constant weight, truncate the fused_distance
+  //     //  2: constant weight, truncate the voxel_distance_measured
+  //     //  3: linear weight, truncate the voxel_distance_measured
+  //     //  4: exponential weight, truncate the voxel_distance_measured
+  //     // Non-Projective distance:
+  //     //  5: weight and distance derived from VoxField
+  //     //  6: linear weight, distance derived from VoxField
+  //     const int voxel_weight_method = 6;
+  // if (voxel_weight_method == 1) {
+  //   // the original nvblox impelentation
+  //   // not use normal vector
+  //   updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
+  //               max_weight);
+  // } else {
+  //   // the improved weight computation
+  //   // use normal vector
+  //   updateVoxelMultiWeightComp(
+  //       image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
+  //       max_weight, voxel_weight_method, point_vector, normal_vector, T_C_L);
+  // }
+}
 
 ProjectiveSemanticIntegrator::ProjectiveSemanticIntegrator()
     : ProjectiveIntegratorBase() {
@@ -643,47 +579,6 @@ void ProjectiveSemanticIntegrator::
   lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = value;
 }
 
-/// TODO(gogojjh): finish these functions
-// template <typename SensorType>
-// void ProjectiveSemanticIntegrator::integrateFrameTemplate(
-//     const DepthImage& depth_frame, const Transform& T_L_C,
-//     const SensorType& sensor, TsdfLayer* layer,
-//     std::vector<Index3D>* updated_blocks) {
-//   CHECK_NOTNULL(layer);
-//   timing::Timer tsdf_timer("tsdf/integrate");
-
-//   // Metric truncation distance for this layer
-//   const float voxel_size =
-//       layer->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
-//   const float truncation_distance_m = truncation_distance_vox_ *
-//   voxel_size;
-
-//   // Identify blocks we can (potentially) see
-//   timing::Timer blocks_in_view_timer("tsdf/integrate/get_blocks_in_view");
-//   const std::vector<Index3D> block_indices =
-//       view_calculator_.getBlocksInImageViewRaycast(
-//           depth_frame, T_L_C, sensor, layer->block_size(),
-//           truncation_distance_m, max_integration_distance_m_);
-//   // LOG(INFO) << "block_indices size: " << block_indices.size();
-//   blocks_in_view_timer.Stop();
-
-//   // Allocate blocks (CPU)
-//   timing::Timer allocate_blocks_timer("tsdf/integrate/allocate_blocks");
-//   allocateBlocksWhereRequired(block_indices, layer);
-//   allocate_blocks_timer.Stop();
-
-//   // Update identified blocks
-//   timing::Timer update_blocks_timer("tsdf/integrate/update_blocks");
-//   integrateBlocksTemplate<SensorType>(block_indices, depth_frame, T_L_C,
-//   sensor,
-//                                       layer);
-//   update_blocks_timer.Stop();
-
-//   if (updated_blocks != nullptr) {
-//     *updated_blocks = block_indices;
-//   }
-// }
-
 template <typename CameraType>
 void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
@@ -691,13 +586,14 @@ void ProjectiveSemanticIntegrator::integrateCameraFrame(
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
   LOG(INFO) << "ProjectiveSemanticIntegrator::integrateFrame<CameraType>";
   CHECK_NOTNULL(semantic_layer);
-  /// NOTE(gogojjh) integrateFrameTemplate
+  // updateCameraBlocks(block_indices, depth_frame, semantic_frame, T_L_C,
+  // lidar,
+  //                   semantic_layer);
 }
 
-template <typename LidarType>
 void ProjectiveSemanticIntegrator::integrateLidarFrame(
     const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_L_C, const LidarType& lidar, const TsdfLayer& tsdf_layer,
+    const Transform& T_L_C, const OSLidar& lidar, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
   CHECK_NOTNULL(semantic_layer);
   timing::Timer tsdf_timer("semantic/integrate");
@@ -718,6 +614,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   LOG(INFO) << "[semantic] block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
+  // ***********************************************************
+  // NOTE(gogojjh): need to check the function
   // Check which of these blocks are:
   // - Allocated in the TSDF, and
   // - have at least a single voxel within the truncation band
@@ -732,6 +630,7 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
             << block_indices.size();
   blocks_in_band_timer.Stop();
+  // ***********************************************************
 
   // Allocate blocks (CPU)
   timing::Timer allocate_blocks_timer("semantic/integrate/allocate_blocks");
@@ -740,9 +639,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
 
   // Update identified blocks
   timing::Timer update_blocks_timer("semantic/integrate/update_blocks");
-  // TODO(gogojjh): update blocks according to semantic_frame with depth_frame
-  // updateBlocks(block_indices, depth_frame, semantic_frame, T_L_C, sensor,
-  //              tsdf_layer, semantic_layer);
+  updateBlocksTemplate(block_indices, depth_frame, semantic_frame, T_L_C, lidar,
+                       semantic_layer);
   update_blocks_timer.Stop();
 
   if (updated_blocks != nullptr) {
@@ -750,176 +648,92 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   }
 }
 
-// // Camera
-// void ProjectiveSemanticIntegrator::integrateBlocks(
-//     const DepthImage& depth_frame, const Transform& T_C_L, const Camera&
-//     camera, TsdfLayer* layer_ptr) {
-//   // Kernel call - One ThreadBlock launched per VoxelBlock
-//   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
-//   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide,
-//   kVoxelsPerSide); const int num_thread_blocks =
-//   block_indices_device_.size();
+template <typename SensorType>
+void ProjectiveSemanticIntegrator::updateBlocksTemplate(
+    const std::vector<Index3D>& block_indices, const DepthImage& depth_frame,
+    const SemanticImage& semantic_frame, const Transform& T_L_C,
+    const SensorType& sensor, SemanticLayer* layer_ptr) {
+  CHECK_NOTNULL(layer_ptr);
 
-//   // Metric truncation distance for this layer
-//   const float voxel_size =
-//       layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
-//   const float truncation_distance_m = truncation_distance_vox_ *
-//   voxel_size;
+  if (block_indices.empty()) {
+    return;
+  }
+  const int num_blocks = block_indices.size();
 
-//   // Kernel
-//   integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
-//                           integration_stream_>>>(
-//       block_indices_device_.data(),  // NOLINT
-//       camera,                        // NOLINT
-//       depth_frame.dataConstPtr(),    // NOLINT
-//       depth_frame.rows(),            // NOLINT
-//       depth_frame.cols(),            // NOLINT
-//       T_C_L,                         // NOLINT
-//       layer_ptr->block_size(),       // NOLINT
-//       truncation_distance_m,         // NOLINT
-//       max_weight_,                   // NOLINT
-//       max_integration_distance_m_,   // NOLINT
-//       block_ptrs_device_.data());    // NOLINT
+  // Expand the buffers when needed
+  if (num_blocks > block_indices_device_.size()) {
+    constexpr float kBufferExpansionFactor = 1.5f;
+    const int new_size = static_cast<int>(kBufferExpansionFactor * num_blocks);
+    block_indices_device_.reserve(new_size);
+    block_ptrs_device_.reserve(new_size);
+    block_indices_host_.reserve(new_size);
+    block_ptrs_host_.reserve(new_size);
+  }
 
-//   // Finish processing of the frame before returning control
-//   finish();
-//   checkCudaErrors(cudaPeekAtLastError());
-// }
+  // Stage on the host pinned memory
+  block_indices_host_ = block_indices;
+  block_ptrs_host_ = getBlockPtrsFromIndices(block_indices, layer_ptr);
 
-// // Lidar
-// void ProjectiveSemanticIntegrator::integrateBlocks(
-//     const DepthImage& depth_frame, const Transform& T_C_L, const Lidar&
-//     lidar, TsdfLayer* layer_ptr) {
-//   // Kernel call - One ThreadBlock launched per VoxelBlock
-//   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
-//   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide,
-//   kVoxelsPerSide); const int num_thread_blocks =
-//   block_indices_device_.size();
+  // Transfer to the device
+  block_indices_device_ = block_indices_host_;
+  block_ptrs_device_ = block_ptrs_host_;
 
-//   // Metric truncation distance for this layer
-//   const float voxel_size =
-//       layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
-//   const float truncation_distance_m = truncation_distance_vox_ *
-//   voxel_size;
+  // We need the inverse transform in the kernel
+  const Transform T_C_L = T_L_C.inverse();
 
-//   // Metric params
-//   const float linear_interpolation_max_allowable_difference_m =
-//       lidar_linear_interpolation_max_allowable_difference_vox_ *
-//       voxel_size;
-//   const float nearest_interpolation_max_allowable_squared_dist_to_ray_m =
-//       std::pow(lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ *
-//                    voxel_size,
-//                2);
+  updateBlocks(depth_frame, semantic_frame, T_C_L, sensor, layer_ptr);
+}
 
-//   // Kernel
-//   integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
-//                           integration_stream_>>>(
-//       block_indices_device_.data(),                               // NOLINT
-//       lidar,                                                      // NOLINT
-//       depth_frame.dataConstPtr(),                                 // NOLINT
-//       depth_frame.rows(),                                         // NOLINT
-//       depth_frame.cols(),                                         // NOLINT
-//       T_C_L,                                                      // NOLINT
-//       layer_ptr->block_size(),                                    // NOLINT
-//       truncation_distance_m,                                      // NOLINT
-//       max_weight_,                                                // NOLINT
-//       max_integration_distance_m_,                                // NOLINT
-//       linear_interpolation_max_allowable_difference_m,            // NOLINT
-//       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
-//       block_ptrs_device_.data());                                 // NOLINT
+// NOTE(gogojjh): only for OSLidar
+// OSLidar
+void ProjectiveSemanticIntegrator::updateBlocks(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_C_L, const OSLidar& lidar, SemanticLayer* layer_ptr) {
+  LOG(INFO) << "updateBLocks";
+  /// block integration
+  // Kernel call - One ThreadBlock launched per VoxelBlock
+  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
+  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
+  // NOTE(gogojjh): the number of visible blocks
+  const int num_thread_blocks = block_indices_device_.size();
 
-//   // Finish processing of the frame before returning control
-//   finish();
-//   checkCudaErrors(cudaPeekAtLastError());
-// }
+  // Metric truncation distance for this layer
+  const float voxel_size =
+      layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
+  // default: 4.0 * 0.1
+  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
 
-// // OSLidar
-// void ProjectiveSemanticIntegrator::integrateBlocks(
-//     const DepthImage& depth_frame, const Transform& T_C_L, const OSLidar&
-//     lidar, TsdfLayer* layer_ptr) {
-//   // Kernel call - One ThreadBlock launched per VoxelBlock
-//   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
-//   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide,
-//   kVoxelsPerSide);
-//   // NOTE(gogojjh): the number of visible blocks
-//   const int num_thread_blocks = block_indices_device_.size();
+  // Metric params
+  const float linear_interpolation_max_allowable_difference_m =
+      lidar_linear_interpolation_max_allowable_difference_vox_ * voxel_size;
+  const float nearest_interpolation_max_allowable_squared_dist_to_ray_m =
+      std::pow(lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ *
+                   voxel_size,
+               2);
 
-//   // Metric truncation distance for this layer
-//   const float voxel_size =
-//       layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
-//   // default: 4.0 * 0.1
-//   const float truncation_distance_m = truncation_distance_vox_ *
-//   voxel_size;
+  integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
+                          integration_stream_>>>(
+      block_indices_device_.data(),                               // NOLINT
+      lidar,                                                      // NOLINT
+      semantic_frame.dataConstPtr(),                              // NOLINT
+      semantic_frame.rows(),                                      // NOLINT
+      semantic_frame.cols(),                                      // NOLINT
+      depth_frame.dataConstPtr(),                                 // NOLINT
+      depth_frame.rows(),                                         // NOLINT
+      depth_frame.cols(),                                         // NOLINT
+      T_C_L,                                                      // NOLINT
+      layer_ptr->block_size(),                                    // NOLINT
+      truncation_distance_m,                                      // NOLINT
+      max_weight_,                                                // NOLINT
+      max_integration_distance_m_,                                // NOLINT
+      linear_interpolation_max_allowable_difference_m,            // NOLINT
+      nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
+      block_ptrs_device_.data());                                 // NOLINT
 
-//   // Metric params
-//   const float linear_interpolation_max_allowable_difference_m =
-//       lidar_linear_interpolation_max_allowable_difference_vox_ *
-//       voxel_size;
-//   const float nearest_interpolation_max_allowable_squared_dist_to_ray_m =
-//       std::pow(lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ *
-//                    voxel_size,
-//                2);
-
-//   // Kernel
-//   // std::cout << "num_thread_blocks: " << num_thread_blocks << std::endl;
-//   // std::cout << "kVoxelsPerSide: " << kVoxelsPerSide << std::endl;
-//   integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
-//                           integration_stream_>>>(
-//       block_indices_device_.data(),                               // NOLINT
-//       lidar,                                                      // NOLINT
-//       depth_frame.dataConstPtr(),                                 // NOLINT
-//       depth_frame.rows(),                                         // NOLINT
-//       depth_frame.cols(),                                         // NOLINT
-//       T_C_L,                                                      // NOLINT
-//       layer_ptr->block_size(),                                    // NOLINT
-//       truncation_distance_m,                                      // NOLINT
-//       max_weight_,                                                // NOLINT
-//       max_integration_distance_m_,                                // NOLINT
-//       linear_interpolation_max_allowable_difference_m,            // NOLINT
-//       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
-//       block_ptrs_device_.data());                                 // NOLINT
-
-//   // Finish processing of the frame before returning control
-//   finish();
-//   checkCudaErrors(cudaPeekAtLastError());
-// }
-
-// template <typename SensorType>
-// void ProjectiveSemanticIntegrator::integrateBlocksTemplate(
-//     const std::vector<Index3D>& block_indices, const DepthImage&
-//     depth_frame, const Transform& T_L_C, const SensorType& sensor,
-//     TsdfLayer* layer_ptr) {
-//   CHECK_NOTNULL(layer_ptr);
-
-//   if (block_indices.empty()) {
-//     return;
-//   }
-//   const int num_blocks = block_indices.size();
-
-//   // Expand the buffers when needed
-//   if (num_blocks > block_indices_device_.size()) {
-//     constexpr float kBufferExpansionFactor = 1.5f;
-//     const int new_size = static_cast<int>(kBufferExpansionFactor *
-//     num_blocks); block_indices_device_.reserve(new_size);
-//     block_ptrs_device_.reserve(new_size);
-//     block_indices_host_.reserve(new_size);
-//     block_ptrs_host_.reserve(new_size);
-//   }
-
-//   // Stage on the host pinned memory
-//   block_indices_host_ = block_indices;
-//   block_ptrs_host_ = getBlockPtrsFromIndices(block_indices, layer_ptr);
-
-//   // Transfer to the device
-//   block_indices_device_ = block_indices_host_;
-//   block_ptrs_device_ = block_ptrs_host_;
-
-//   // We need the inverse transform in the kernel
-//   const Transform T_C_L = T_L_C.inverse();
-
-//   // Calling the GPU to do the updates
-//   integrateBlocks(depth_frame, T_C_L, sensor, layer_ptr);
-// }
+  // Finish processing of the frame before returning control
+  finish();
+  checkCudaErrors(cudaPeekAtLastError());
+}
 
 __global__ void checkBlocksInTruncationBandSemantics(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,

@@ -137,10 +137,9 @@ class RgbdMapper : public MapperBase {
   ///@param T_L_C Pose of the sensor, specified as a transform from sensor-frame
   ///             to Layer-frame transform.
   ///@param lidar Intrinsics model of the Sensor.
-  template <typename LidarType>
-  void integrateLidarSemantic(const DepthImage& depth_frame,
-                              const SemanticImage& semantic_frame,
-                              const Transform& T_L_C, const LidarType& lidar);
+  void integrateOSLidarSemantic(const DepthImage& depth_frame,
+                                const SemanticImage& semantic_frame,
+                                const Transform& T_L_C, const OSLidar& lidar);
 
   /// Updates the mesh blocks which require an update
   /// @return The indices of the blocks that were updated in this call.

@@ -72,10 +72,9 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   /// intergrated.
   /// @param updated_blocks Optional pointer to a vector which will contain the
   /// 3D indices of blocks affected by the integration.
-  template <typename LidarType>
   void integrateLidarFrame(const DepthImage& depth_frame,
                            const SemanticImage& semantic_frame,
-                           const Transform& T_L_C, const LidarType& lidar,
+                           const Transform& T_L_C, const OSLidar& lidar,
                            const TsdfLayer& tsdf_layer,
                            SemanticLayer* semantic_layer,
                            std::vector<Index3D>* updated_blocks = nullptr);
@@ -117,30 +116,16 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
 
-  // TODO(gogojjh): the main function to implement the GPU-based integration
-  // Given a set of blocks in view (block_indices) perform TSDF updates on all
-  // voxels within these blocks on the GPU.
-  // void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
-  //                      const Camera& camera, TsdfLayer* layer_ptr);
-  // void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
-  //                      const Lidar& lidar, TsdfLayer* layer_ptr);
-  // void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
-  //                      const OSLidar& lidar, TsdfLayer* layer_ptr);
+  template <typename SensorType>
+  void updateBlocksTemplate(const std::vector<Index3D>& block_indices,
+                            const DepthImage& depth_frame,
+                            const SemanticImage& semantic_frame,
+                            const Transform& T_L_C, const SensorType& sensor,
+                            SemanticLayer* layer_ptr);
 
-  // template <typename SensorType>
-  // void integrateBlocksTemplate(const std::vector<Index3D>& block_indices,
-  //                              const DepthImage& depth_frame,
-  //                              const Transform& T_L_C, const SensorType&
-  //                              sensor, TsdfLayer* layer);
-
-  // // The internal, templated version of the integrateFrame methods above.
-  // Called
-  // // internally with either a camera or lidar sensor.
-  // template <typename SensorType>
-  // void integrateFrameTemplate(const DepthImage& depth_frame,
-  //                             const Transform& T_L_C, const SensorType&
-  //                             sensor, TsdfLayer* layer, std::vector<Index3D>*
-  //                             updated_blocks = nullptr);
+  void updateBlocks(const DepthImage& depth_frame,
+                    const SemanticImage& semantic_frame, const Transform& T_C_L,
+                    const OSLidar& lidar, SemanticLayer* layer_ptr);
 
   // Takes a list of block indices and returns a subset containing the block
   // indices containing at least on voxel inside the truncation band of the

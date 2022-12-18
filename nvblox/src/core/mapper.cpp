@@ -33,13 +33,6 @@ template void RgbdMapper::integrateCameraSemantic(
 template void RgbdMapper::integrateCameraSemantic(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
     const CameraPinhole& sensor);
-
-template void RgbdMapper::integrateLidarSemantic(
-    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_L_C, const Lidar& sensor);
-template void RgbdMapper::integrateLidarSemantic(
-    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_L_C, const OSLidar& sensor);
 }  // namespace nvblox
 
 namespace nvblox {
@@ -116,13 +109,12 @@ void RgbdMapper::integrateCameraSemantic(const SemanticImage& semantic_frame,
                                             layers_.getPtr<SemanticLayer>());
 }
 
-template <typename LidarType>
-void RgbdMapper::integrateLidarSemantic(const DepthImage& depth_frame,
-                                        const SemanticImage& semantic_frame,
-                                        const Transform& T_L_C,
-                                        const LidarType& lidar) {
+void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
+                                          const SemanticImage& semantic_frame,
+                                          const Transform& T_L_C,
+                                          const OSLidar& oslidar) {
   semantic_integrator_.integrateLidarFrame(depth_frame, semantic_frame, T_L_C,
-                                           lidar, layers_.get<TsdfLayer>(),
+                                           oslidar, layers_.get<TsdfLayer>(),
                                            layers_.getPtr<SemanticLayer>());
 }
 

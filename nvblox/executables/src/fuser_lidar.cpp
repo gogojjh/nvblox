@@ -467,8 +467,8 @@ bool FuserLidar::integrateFrame(const int frame_number) {
     if (semantic_frame_subsampling_ > 0) {
       if ((frame_number + 1) % semantic_frame_subsampling_ == 0) {
         timing::Timer timer_integrate_semantic("fuser/integrate_semantic");
-        mapper_->integrateLidarSemantic(depth_frame, semantic_frame, T_W_B,
-                                        oslidar);
+        mapper_->integrateOSLidarSemantic(depth_frame, semantic_frame, T_W_B,
+                                          oslidar);
         timer_integrate_semantic.Stop();
       }
     }
