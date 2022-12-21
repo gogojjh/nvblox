@@ -322,7 +322,7 @@ __global__ void integrateBlocks(
   //  3: exponential weight, truncate the voxel_distance_measured
   //  4: sensor distance weight
   //  5: linear weight * sensor distance weight
-  const int voxel_weight_method = 5;
+  const int voxel_weight_method = 1;
   if (voxel_weight_method == 1) {
     updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
                 max_weight);

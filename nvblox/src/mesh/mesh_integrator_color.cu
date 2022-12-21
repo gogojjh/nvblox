@@ -29,6 +29,7 @@ void MeshIntegrator::colorMesh(const ColorLayer& color_layer,
                                BlockLayer<MeshBlock>* mesh_layer) {
   colorMesh(color_layer, mesh_layer->getAllBlockIndices(), mesh_layer);
 }
+
 void MeshIntegrator::colorMesh(const ColorLayer& color_layer,
                                const std::vector<Index3D>& block_indices,
                                BlockLayer<MeshBlock>* mesh_layer) {
@@ -62,7 +63,8 @@ __global__ void colorMeshBlockByClosestColorVoxel(
   const Vector3f p_L_B_m = getPositionFromBlockIndex(block_size, block_index);
 
   // Interate through MeshBlock vertices - Stidded access pattern
-  for (int i = threadIdx.x; i < cuda_mesh_block.vertices_size; i += blockDim.x) {
+  for (int i = threadIdx.x; i < cuda_mesh_block.vertices_size;
+       i += blockDim.x) {
     // The position of this vertex in the layer
     const Vector3f p_L_V_m = cuda_mesh_block.vertices[i];
 
@@ -99,7 +101,8 @@ __global__ void colorMeshBlocksConstant(Color color,
   // Each threadBlock operates on a single MeshBlock
   CudaMeshBlock cuda_mesh_block = cuda_mesh_blocks[blockIdx.x];
   // Interate through MeshBlock vertices - Stidded access pattern
-  for (int i = threadIdx.x; i < cuda_mesh_block.vertices_size; i += blockDim.x) {
+  for (int i = threadIdx.x; i < cuda_mesh_block.vertices_size;
+       i += blockDim.x) {
     cuda_mesh_block.colors[i] = color;
   }
 }

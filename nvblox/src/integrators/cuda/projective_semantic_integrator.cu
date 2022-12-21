@@ -36,28 +36,17 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 }  // namespace nvblox
 
 namespace nvblox {
-// TODO(gogojjh): the original nvblox implementation
-__device__ inline bool updateSemanticVoxel(const float surface_depth_measured,
-                                           const uint16_t semantic_label,
+__device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
                                            SemanticVoxel* voxel_ptr,
                                            const float voxel_depth_m,
                                            const float truncation_distance_m,
                                            const float max_weight) {
-  // Get the MEASURED depth of the VOXEL
-  float voxel_distance_measured = surface_depth_measured - voxel_depth_m;
-
-  // If we're behind the negative truncation distance, just continue.
-  if (voxel_distance_measured < -truncation_distance_m) {
-    return false;
-  }
-
   // updateSemanticVoxelProbabilities
   SemanticProbabilities semantic_label_frequencies =
       SemanticProbabilities::Zero();
   if (semantic_label > semantic_label_frequencies.size()) {
     return false;
   }
-
   // updateSemanticVoxel label by the MLE
   semantic_label_frequencies[semantic_label] += 1.0f;
   float semantic_log_likelihood = 0.3f;
@@ -66,8 +55,12 @@ __device__ inline bool updateSemanticVoxel(const float surface_depth_measured,
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
 
   // updateSemanticVoxel color
-  voxel_ptr->color = Color(voxel_ptr->semantic_label, voxel_ptr->semantic_label,
-                           voxel_ptr->semantic_label);
+  // voxel_ptr->color = Color(voxel_ptr->semantic_label,
+  // voxel_ptr->semantic_label,
+  //                          voxel_ptr->semantic_label);
+
+  voxel_ptr->color = rainbowColorMap(1.0 * voxel_ptr->semantic_label /
+                                     semantic_label_frequencies.size());
   return true;
 }
 
@@ -493,9 +486,19 @@ __global__ void integrateBlocksKernel(
     return;
   }
 
-  uint16_t semantic_image_value =
-      image::access(int(u_px.y()), int(u_px.x()), cols, semantic_image);
-  // NOTE(gogojjh)
+  // Occlusion testing
+  // Get the distance of the voxel from the rendered surface. If outside
+  // truncation band, skip.
+  const float voxel_distance_from_surface = depth_image_value - voxel_depth_m;
+  if (fabsf(voxel_distance_from_surface) > truncation_distance_m) {
+    return;
+  }
+
+  uint16_t semantic_image_value;
+  if (!interpolation::interpolate2DLinear<uint16_t>(
+          semantic_image, u_px, rows, cols, &semantic_image_value)) {
+    return;
+  }
   // printf("%d ", semantic_image_value);
 
   // Get the Voxel we'll update in this thread
@@ -508,11 +511,11 @@ __global__ void integrateBlocksKernel(
 
   // **********************************************************
   // NOTE(gogojjh): retrive the normal vector given u_px
-  const Index2D u_C = u_px.array().round().cast<int>();
-  Vector3f point_vector = Vector3f::Zero();
-  Vector3f normal_vector = Vector3f::Zero();
-  if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
-  if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
+  // const Index2D u_C = u_px.array().round().cast<int>();
+  // Vector3f point_vector = Vector3f::Zero();
+  // Vector3f normal_vector = Vector3f::Zero();
+  // if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
+  // if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
   // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),point_vector.y(),
   //        point_vector.z(), normal_vector.x(), normal_vector.y(),
   //        normal_vector.z());
@@ -534,16 +537,36 @@ __global__ void integrateBlocksKernel(
   if (voxel_weight_method == 1) {
     // the original nvblox impelentation
     // not use normal vector
-    updateSemanticVoxel(depth_image_value, semantic_image_value, voxel_ptr,
-                        voxel_depth_m, truncation_distance_m, max_weight);
+    updateSemanticVoxel(semantic_image_value, voxel_ptr, voxel_depth_m,
+                        truncation_distance_m, max_weight);
   }
-
   // else {
   //   // the improved weight computation
   //   // use normal vector
   //   updateVoxelMultiWeightComp(
   //       depth_image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
   //       max_weight, voxel_weight_method, point_vector, normal_vector, T_C_L);
+  // }
+}
+
+__global__ void updateColorBlocks(
+    const SemanticBlock** block_device_ptrs_semantic,
+    ColorBlock** block_device_ptrs_color) {
+  const SemanticVoxel* semantic_voxel_ptr =
+      &(block_device_ptrs_semantic[blockIdx.x]
+            ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+  ColorVoxel* color_voxel_ptr =
+      &(block_device_ptrs_color[blockIdx.x]
+            ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+  color_voxel_ptr->color = semantic_voxel_ptr->color;
+
+  // NOTE(gogojjh): comment and backup the code
+  // if (semantic_voxel_ptr->semantic_label == 0u) {
+  //   color_voxel_ptr->color = semantic_voxel_ptr->color;
+  // } else {
+  //   color_voxel_ptr->color = Color(semantic_voxel_ptr->semantic_label,
+  //                                  semantic_voxel_ptr->semantic_label,
+  //                                  semantic_voxel_ptr->semantic_label);
   // }
 }
 
@@ -614,8 +637,6 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
       view_calculator_.getBlocksInImageViewRaycast(
           depth_frame, T_L_C, lidar, semantic_layer->block_size(),
           truncation_distance_m, max_integration_distance_m_);
-  // NOTE(gogojjh): comment to be removed
-  LOG(INFO) << "[semantic] block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
   // ***********************************************************
@@ -631,8 +652,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
                                                       truncation_distance_m);
   // NOTE(gogojjh): comment to be removed
-  LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
-            << block_indices.size();
+  // LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
+  //           << block_indices.size();
   blocks_in_band_timer.Stop();
   // ***********************************************************
 
@@ -736,6 +757,52 @@ void ProjectiveSemanticIntegrator::integrateBlocks(
   checkCudaErrors(cudaPeekAtLastError());
 }
 
+void ProjectiveSemanticIntegrator::updateColorLayer(
+    const std::vector<Index3D>& block_indices,
+    const SemanticLayer& semantic_layer, ColorLayer* layer_ptr) {
+  CHECK_NOTNULL(layer_ptr);
+
+  if (block_indices.empty()) {
+    return;
+  }
+  const int num_blocks = block_indices.size();
+  allocateBlocksWhereRequired(block_indices, layer_ptr);
+
+  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
+  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
+
+  // Stage on the host pinned memory
+  block_indices_host_ = block_indices;
+
+  host_vector<const SemanticBlock*> block_ptrs_host_semantic;
+  block_ptrs_host_semantic.reserve(num_blocks);
+  device_vector<const SemanticBlock*> block_ptrs_device_semantic;
+  block_ptrs_device_semantic.reserve(num_blocks);
+  host_vector<ColorBlock*> block_ptrs_host_color;
+  block_ptrs_host_color.reserve(num_blocks);
+  device_vector<ColorBlock*> block_ptrs_device_color;
+  block_ptrs_device_color.reserve(num_blocks);
+
+  block_ptrs_host_semantic =
+      getBlockPtrsFromIndices(block_indices, semantic_layer);
+  block_ptrs_host_color = getBlockPtrsFromIndices(block_indices, layer_ptr);
+
+  // Transfer to the device
+  block_ptrs_device_semantic = block_ptrs_host_semantic;
+  block_ptrs_device_color = block_ptrs_host_color;
+
+  updateColorBlocks<<<num_blocks, kThreadsPerBlock, 0,
+                      integration_stream_>>>(
+      block_ptrs_device_semantic.data(),  // NOLINT
+      block_ptrs_device_color.data());
+
+  // Finish processing of the frame before returning control
+  finish();
+  checkCudaErrors(cudaPeekAtLastError());
+}
+
+// *********************************************
+// *********************************************
 __global__ void checkBlocksInTruncationBandSemantics(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,
     const float truncation_distance_m,

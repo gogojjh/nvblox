@@ -145,6 +145,11 @@ class RgbdMapper : public MapperBase {
   /// @return The indices of the blocks that were updated in this call.
   std::vector<Index3D> updateMesh();
 
+  // TODO(gogojjh):
+  /// Updates the mesh blocks which require an update (semantic)
+  /// @return The indices of the blocks that were updated in this call.
+  // std::vector<Index3D> updateSemanticMesh();
+
   /// Generate (or re-generate) a mesh for the entire map. Useful if loading
   /// a layer cake without a mesh layer, for example.
   void generateMesh();

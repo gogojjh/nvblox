@@ -79,6 +79,10 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
                            SemanticLayer* semantic_layer,
                            std::vector<Index3D>* updated_blocks = nullptr);
 
+  void updateColorLayer(const std::vector<Index3D>& block_indices,
+                        const SemanticLayer& semantic_layer,
+                        ColorLayer* layer_ptr);
+
   /// Blocks until GPU operations are complete
   /// Ensure outstanding operations are finished (relevant for integrators
   /// launching asynchronous work)
