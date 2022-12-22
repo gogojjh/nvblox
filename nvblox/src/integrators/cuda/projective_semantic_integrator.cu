@@ -44,7 +44,7 @@ __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
                                            const float truncation_distance_m,
                                            const float max_weight) {
   uint16_t update_label;
-  Index3D color_label;
+  Index3D color_label;  // bgr
   nvblox::semantic_kitti::parseSemanticKittiLabel(semantic_label, &update_label,
                                                   &color_label);
 
@@ -62,7 +62,7 @@ __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
 
   // updateSemanticVoxel label by the MLE
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
-  voxel_ptr->color = Color(color_label.x(), color_label.y(), color_label.z());
+  voxel_ptr->color = Color(color_label.z(), color_label.y(), color_label.x());
   return true;
 }
 
@@ -343,7 +343,6 @@ __device__ inline bool interpolateOSLidarImage(
       // If we can't successfully do closest, fail to intgrate this voxel.
       return false;
     }
-
     // Additional check
     // Check that this voxel is close to the ray passing through the pixel.
     // Note(alexmillane): This is to prevent large numbers of voxels
@@ -477,8 +476,7 @@ __global__ void integrateBlocksKernel(
     }
   }
 
-  // function 2
-  // Interpolate on the depth_image plane
+  // function 2: Interpolate on the depth_image plane
   float depth_image_value;
   if (!interpolateOSLidarImage(
           lidar, p_voxel_center_C, depth_image, u_px, rows, cols,
@@ -488,7 +486,7 @@ __global__ void integrateBlocksKernel(
     return;
   }
 
-  // Occlusion testing
+  // function 3: Occlusion testing
   // Get the distance of the voxel from the rendered surface. If outside
   // truncation band, skip.
   const float voxel_distance_from_surface = depth_image_value - voxel_depth_m;
@@ -496,8 +494,11 @@ __global__ void integrateBlocksKernel(
     return;
   }
 
+  // function 4: Get the closest semantic value
+  // If we can't successfully do closest, fail to intgrate this voxel.
   uint16_t semantic_image_value;
-  if (!interpolation::interpolate2DLinear<uint16_t>(
+  if (!interpolation::interpolate2DClosest<
+          uint16_t, interpolation::checkers::PixelAlwaysValid<uint16_t>>(
           semantic_image, u_px, rows, cols, &semantic_image_value)) {
     return;
   }
