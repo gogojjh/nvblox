@@ -16,10 +16,12 @@ limitations under the License.
 #include <nvblox/integrators/projective_semantic_integrator.h>
 
 #include "nvblox/core/color.h"
+// #include "nvblox/core/color_map.h"
 #include "nvblox/core/cuda/error_check.cuh"
 #include "nvblox/core/interpolation_2d.h"
 #include "nvblox/integrators/internal/cuda/projective_integrators_common.cuh"
 #include "nvblox/integrators/internal/integrators_common.h"
+#include "nvblox/utils/parse_kitti_label.h"
 #include "nvblox/utils/timing.h"
 #include "nvblox/utils/weight_function.h"
 
@@ -41,26 +43,26 @@ __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
                                            const float voxel_depth_m,
                                            const float truncation_distance_m,
                                            const float max_weight) {
+  uint16_t update_label;
+  Index3D color_label;
+  nvblox::semantic_kitti::parseSemanticKittiLabel(semantic_label, &update_label,
+                                                  &color_label);
+
   // updateSemanticVoxelProbabilities
   SemanticProbabilities semantic_label_frequencies =
       SemanticProbabilities::Zero();
-  if (semantic_label > semantic_label_frequencies.size()) {
+  if (update_label > semantic_label_frequencies.size()) {
     return false;
   }
-  // updateSemanticVoxel label by the MLE
-  semantic_label_frequencies[semantic_label] += 1.0f;
+  semantic_label_frequencies[update_label] += 1.0f;
+
   float semantic_log_likelihood = 0.3f;
   voxel_ptr->semantic_priors +=
       semantic_label_frequencies * semantic_log_likelihood;
+
+  // updateSemanticVoxel label by the MLE
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
-
-  // updateSemanticVoxel color
-  // voxel_ptr->color = Color(voxel_ptr->semantic_label,
-  // voxel_ptr->semantic_label,
-  //                          voxel_ptr->semantic_label);
-
-  voxel_ptr->color = rainbowColorMap(1.0 * voxel_ptr->semantic_label /
-                                     semantic_label_frequencies.size());
+  voxel_ptr->color = Color(color_label.x(), color_label.y(), color_label.z());
   return true;
 }
 
@@ -559,15 +561,6 @@ __global__ void updateColorBlocks(
       &(block_device_ptrs_color[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
   color_voxel_ptr->color = semantic_voxel_ptr->color;
-
-  // NOTE(gogojjh): comment and backup the code
-  // if (semantic_voxel_ptr->semantic_label == 0u) {
-  //   color_voxel_ptr->color = semantic_voxel_ptr->color;
-  // } else {
-  //   color_voxel_ptr->color = Color(semantic_voxel_ptr->semantic_label,
-  //                                  semantic_voxel_ptr->semantic_label,
-  //                                  semantic_voxel_ptr->semantic_label);
-  // }
 }
 
 ProjectiveSemanticIntegrator::ProjectiveSemanticIntegrator()

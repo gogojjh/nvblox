@@ -53,7 +53,7 @@ struct ColorVoxel {
 };
 
 // NOTE(gogojjh):
-static constexpr size_t kTotalNumberOfLabels = 28;
+static constexpr size_t kTotalNumberOfLabels = 26;
 typedef Eigen::Matrix<float, kTotalNumberOfLabels, 1> SemanticProbabilities;
 struct SemanticVoxel {
   // Initialize voxel to unknown label.
