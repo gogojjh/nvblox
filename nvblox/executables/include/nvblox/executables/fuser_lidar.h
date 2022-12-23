@@ -70,7 +70,7 @@ class FuserLidar {
   // Output the serialized map to a file
   bool outputMapToFile();
   // Output an obstacle pointcloud based on the ESDF map as PLY file.
-  bool outputObstaclePointcloudPly();
+  bool outputZeroCrossingPly();
 
   // Get the mapper (useful for experiments where we modify mapper settings)
   RgbdMapper& mapper();

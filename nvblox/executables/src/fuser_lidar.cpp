@@ -340,17 +340,17 @@ int FuserLidar::run() {
     updateEsdf();
     LOG(INFO) << "Outputting ESDF pointcloud ply file to " << esdf_output_path_;
     outputPointcloudPly();
+
+    if (!obs_output_path_.empty()) {
+      LOG(INFO) << "Outputting Zero Crossing based on the ESDF map ply file to "
+                << obs_output_path_;
+      outputZeroCrossingPly();
+    }
   }
 
   if (!map_output_path_.empty()) {
     LOG(INFO) << "Outputting the serialized map to " << map_output_path_;
     outputMapToFile();
-  }
-
-  if (!obs_output_path_.empty()) {
-    LOG(INFO) << "Outputting Obstacle based on the ESDF map ply file to "
-              << obs_output_path_;
-    outputObstaclePointcloudPly();
   }
 
   // std::vector<std::string> keywords = {
@@ -476,7 +476,8 @@ bool FuserLidar::integrateFrame(const int frame_number) {
     nvblox::cuda::freeNormalImageOSLidar(oslidar);
   }
 
-  if (color_frame_subsampling_ > 0) {
+  // NOTE(gogojjh): prefer to show semantic mapping results
+  if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ < 0) {
     Transform T_W_C = T_W_B * T_B_C_;
     if ((frame_number + 1) % color_frame_subsampling_ == 0) {
       timing::Timer timer_integrate_color("fuser/integrate_color");
@@ -539,11 +540,9 @@ bool FuserLidar::outputMeshPly() {
   return io::outputMeshLayerToPly(mapper_->mesh_layer(), mesh_output_path_);
 }
 
-bool FuserLidar::outputObstaclePointcloudPly() {
+bool FuserLidar::outputZeroCrossingPly() {
   timing::Timer timer_write("fuser/obstacle/write");
-  LOG(INFO)
-      << "[NOTE] The output of the obstacle point cloud is under construction";
-  return io::outputObstacleToPly(mapper_->esdf_layer(), obs_output_path_);
+  return io::outputZeroCrossingToPly(mapper_->esdf_layer(), obs_output_path_);
 }
 
 bool FuserLidar::outputTimingsToFile() {

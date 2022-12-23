@@ -118,6 +118,7 @@ void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
       depth_frame, semantic_frame, T_L_C, oslidar, layers_.get<TsdfLayer>(),
       layers_.getPtr<SemanticLayer>(), &updated_blocks);
   LOG(INFO) << "Integrated Semantic block: " << updated_blocks.size();
+
   semantic_integrator_.updateColorLayer(updated_blocks,
                                         layers_.get<SemanticLayer>(),
                                         layers_.getPtr<ColorLayer>());
