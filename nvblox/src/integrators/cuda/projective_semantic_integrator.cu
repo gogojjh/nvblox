@@ -21,7 +21,7 @@ limitations under the License.
 #include "nvblox/core/interpolation_2d.h"
 #include "nvblox/integrators/internal/cuda/projective_integrators_common.cuh"
 #include "nvblox/integrators/internal/integrators_common.h"
-#include "nvblox/utils/parse_kitti_label.h"
+#include "nvblox/utils/semantickitti_label.h"
 #include "nvblox/utils/timing.h"
 #include "nvblox/utils/weight_function.h"
 
@@ -44,9 +44,8 @@ __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
                                            const float truncation_distance_m,
                                            const float max_weight) {
   uint16_t update_label;
-  Index3D color_label;  // bgr
-  nvblox::semantic_kitti::parseSemanticKittiLabel(semantic_label, &update_label,
-                                                  &color_label);
+  nvblox::semantic_kitti::normalizeSemanticKittiLabel(semantic_label,
+                                                      &update_label);
 
   // updateSemanticVoxelProbabilities
   SemanticProbabilities semantic_label_frequencies =
@@ -56,13 +55,13 @@ __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
   }
   semantic_label_frequencies[update_label] += 1.0f;
 
+  // TODO(gogojjh):
   float semantic_log_likelihood = 0.3f;
   voxel_ptr->semantic_priors +=
       semantic_label_frequencies * semantic_log_likelihood;
 
   // updateSemanticVoxel label by the MLE
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
-  voxel_ptr->color = Color(color_label.z(), color_label.y(), color_label.x());
   return true;
 }
 
@@ -558,10 +557,15 @@ __global__ void updateColorBlocks(
   const SemanticVoxel* semantic_voxel_ptr =
       &(block_device_ptrs_semantic[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+
   ColorVoxel* color_voxel_ptr =
       &(block_device_ptrs_color[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
-  color_voxel_ptr->color = semantic_voxel_ptr->color;
+
+  Index3D color;  // bgr
+  nvblox::semantic_kitti::updateLabelColorMap(
+      semantic_voxel_ptr->semantic_label, &color);
+  color_voxel_ptr->color = Color(color.z(), color.y(), color.x());
 }
 
 ProjectiveSemanticIntegrator::ProjectiveSemanticIntegrator()
@@ -751,6 +755,7 @@ void ProjectiveSemanticIntegrator::integrateBlocks(
   checkCudaErrors(cudaPeekAtLastError());
 }
 
+// NOTE(gogojjh): synchronize color with semantic
 void ProjectiveSemanticIntegrator::updateColorLayer(
     const std::vector<Index3D>& block_indices,
     const SemanticLayer& semantic_layer, ColorLayer* layer_ptr) {

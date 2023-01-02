@@ -68,9 +68,6 @@ struct SemanticVoxel {
   SemanticProbabilities semantic_priors =
       // SemanticProbabilities::Constant(std::log(1 / kTotalNumberOfLabels));
       SemanticProbabilities::Constant(-0.60205999132);
-  // Initialize voxel with gray color
-  // Make sure that all color maps agree on semantic label 0u -> gray
-  Color color = Color::Gray();
 };
 
 }  // namespace nvblox

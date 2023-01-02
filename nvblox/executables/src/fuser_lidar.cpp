@@ -535,14 +535,14 @@ bool FuserLidar::outputPointcloudPly() {
   return io::outputVoxelLayerToPly(mapper_->esdf_layer(), esdf_output_path_);
 }
 
-bool FuserLidar::outputMeshPly() {
-  timing::Timer timer_write("fuser/mesh/write");
-  return io::outputMeshLayerToPly(mapper_->mesh_layer(), mesh_output_path_);
-}
-
 bool FuserLidar::outputZeroCrossingPly() {
   timing::Timer timer_write("fuser/obstacle/write");
   return io::outputZeroCrossingToPly(mapper_->esdf_layer(), obs_output_path_);
+}
+
+bool FuserLidar::outputMeshPly() {
+  timing::Timer timer_write("fuser/mesh/write");
+  return io::outputMeshLayerToPly(mapper_->mesh_layer(), mesh_output_path_);
 }
 
 bool FuserLidar::outputTimingsToFile() {

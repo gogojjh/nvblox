@@ -1,0 +1,2 @@
+add_executable(check_tsdf_block main.cpp)
+target_link_libraries(check_tsdf_block nvblox_lib nvblox_datasets nvblox_datasets_3dmatch)
