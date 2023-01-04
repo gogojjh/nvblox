@@ -74,7 +74,7 @@ __device__ inline bool updateVoxelMultiWeightComp(
   const float kEpsilon = 1e-6;       // Used for coordinates
   const float kFloatEpsilon = 1e-8;  // Used for weights
   const float TSDF_NORMAL_RATIO_TH = 0.05f;
-  const float TSDF_WEIGHT_DISTANCE_TH = 50.0f;
+  const float TSDF_WEIGHT_DISTANCE_TH = 30.0f;
 
   // Get the MEASURED depth of the VOXEL
   float voxel_distance_measured = surface_depth_measured - voxel_depth_m;
@@ -567,7 +567,7 @@ __global__ void integrateBlocksKernel(
   // Non-Projective distance:
   //  5: weight and distance derived from VoxField
   //  6: linear weight, distance derived from VoxField
-  const int voxel_weight_method = 3;
+  const int voxel_weight_method = 6;
   if (voxel_weight_method == 1) {
     // the original nvblox impelentation
     // not use normal vector
