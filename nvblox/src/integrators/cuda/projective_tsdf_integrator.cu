@@ -74,7 +74,7 @@ __device__ inline bool updateVoxelMultiWeightComp(
   const float kEpsilon = 1e-6;       // Used for coordinates
   const float kFloatEpsilon = 1e-8;  // Used for weights
   const float TSDF_NORMAL_RATIO_TH = 0.05f;
-  const float TSDF_WEIGHT_DISTANCE_TH = 30.0f;
+  const float TSDF_WEIGHT_DISTANCE_TH = 1.0f;
 
   // Get the MEASURED depth of the VOXEL
   float voxel_distance_measured = surface_depth_measured - voxel_depth_m;

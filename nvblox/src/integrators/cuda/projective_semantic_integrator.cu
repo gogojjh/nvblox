@@ -39,212 +39,38 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 
 namespace nvblox {
 __device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
-                                           SemanticVoxel* voxel_ptr,
-                                           const float voxel_depth_m,
-                                           const float truncation_distance_m,
-                                           const float max_weight) {
+                                           SemanticVoxel* voxel_ptr) {
   uint16_t update_label;
   nvblox::semantic_kitti::normalizeSemanticKittiLabel(semantic_label,
                                                       &update_label);
 
   // updateSemanticVoxelProbabilities
-  SemanticProbabilities semantic_label_frequencies =
-      SemanticProbabilities::Zero();
-  if (update_label > semantic_label_frequencies.size()) {
+  SemanticProbabilities semantic_label_frequencies;
+  semantic_label_frequencies.setZero();
+  if (update_label >= semantic_label_frequencies.size()) {
     return false;
   }
   semantic_label_frequencies[update_label] += 1.0f;
 
+  const float log_match_probability_ = logf(0.8f);
+  const float log_non_match_probability_ = logf(0.2f);
+
   // TODO(gogojjh):
-  float semantic_log_likelihood = 0.3f;
+  // A `#Labels X #Labels` Eigen matrix where each `j` column represents the
+  // probability of observing label `j` when current label is `i`, where `i`
+  // is the row index of the matrix.
+  // Eigen::Matrix<float, kTotalNumberOfLabels, kTotalNumberOfLabels>
+  //     semantic_log_likelihood_;
+  // semantic_log_likelihood_ =
+  //     semantic_log_likelihood_.Constant(log_non_match_probability_);
+  // semantic_log_likelihood_.diagonal() =
+  //     semantic_log_likelihood_.diagonal().Constant(log_match_probability_);
+
   voxel_ptr->semantic_priors +=
-      semantic_label_frequencies * semantic_log_likelihood;
+      log_match_probability_ * semantic_label_frequencies;
 
   // updateSemanticVoxel label by the MLE
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
-  return true;
-}
-
-__device__ inline bool updateVoxelMultiWeightComp(
-    const float surface_depth_measured, TsdfVoxel* voxel_ptr,
-    const float voxel_depth_m, const float truncation_distance_m,
-    const float max_weight, const int voxel_weight_method,
-    const Vector3f& measurement_point, const Vector3f& measurement_normal,
-    const Transform& T_C_L) {
-  // NOTE(gogojjh): need to externally set parameters in both host and device
-  const float kEpsilon = 1e-6;       // Used for coordinates
-  const float kFloatEpsilon = 1e-8;  // Used for weights
-  const float TSDF_NORMAL_RATIO_TH = 0.05f;
-  const float TSDF_WEIGHT_DISTANCE_TH = 50.0f;
-
-  // Get the MEASURED depth of the VOXEL
-  float voxel_distance_measured = surface_depth_measured - voxel_depth_m;
-  // If we're behind the negative truncation distance, just continue.
-  if (voxel_distance_measured < -truncation_distance_m) {
-    return false;
-  }
-
-  // Read CURRENT voxel values (from global GPU memory)
-  const float voxel_distance_current = voxel_ptr->distance;
-  const float voxel_weight_current = voxel_ptr->weight;
-  const Vector3f voxel_gradient_current = voxel_ptr->gradient;
-
-  if (voxel_weight_method == 1) {
-    // Fuse
-    constexpr float measurement_weight = 1.0f;
-    float fused_distance = (voxel_distance_measured * measurement_weight +
-                            voxel_distance_current * voxel_weight_current) /
-                           (measurement_weight + voxel_weight_current);
-    // Clip
-    if (fused_distance > 0.0f) {
-      fused_distance = fminf(truncation_distance_m, fused_distance);
-    } else {
-      fused_distance = fmaxf(-truncation_distance_m, fused_distance);
-    }
-    const float weight =
-        fminf(measurement_weight + voxel_weight_current, max_weight);
-    // Write NEW voxel values (to global GPU memory)
-    voxel_ptr->distance = fused_distance;
-    voxel_ptr->weight = weight;
-  } else if (voxel_weight_method == 2) {
-    voxel_distance_measured =
-        fminf(voxel_distance_measured, truncation_distance_m);
-    float measurement_weight = tsdf_constant_weight(voxel_distance_measured);
-    float fused_distance = (voxel_distance_measured * measurement_weight +
-                            voxel_distance_current * voxel_weight_current) /
-                           (measurement_weight + voxel_weight_current);
-    if (fused_distance > 0.0f) {
-      fused_distance = fminf(truncation_distance_m, fused_distance);
-    } else {
-      fused_distance = fmaxf(-truncation_distance_m, fused_distance);
-    }
-    const float fused_weight =
-        fminf(measurement_weight + voxel_weight_current, max_weight);
-    voxel_ptr->distance = fused_distance;
-    voxel_ptr->weight = fused_weight;
-  } else if (voxel_weight_method == 3) {
-    voxel_distance_measured =
-        fminf(voxel_distance_measured, truncation_distance_m);
-    float measurement_weight =
-        tsdf_linear_weight(voxel_distance_measured, truncation_distance_m);
-    float fused_distance = (voxel_distance_measured * measurement_weight +
-                            voxel_distance_current * voxel_weight_current) /
-                           (measurement_weight + voxel_weight_current);
-    if (fused_distance > 0.0f) {
-      fused_distance = fminf(truncation_distance_m, fused_distance);
-    } else {
-      fused_distance = fmaxf(-truncation_distance_m, fused_distance);
-    }
-    const float weight =
-        fminf(measurement_weight + voxel_weight_current, max_weight);
-    voxel_ptr->distance = fused_distance;
-    voxel_ptr->weight = weight;
-  } else if (voxel_weight_method == 4) {
-    voxel_distance_measured =
-        fminf(voxel_distance_measured, truncation_distance_m);
-    float measurement_weight =
-        tsdf_exp_weight(voxel_distance_measured, truncation_distance_m);
-    float fused_distance = (voxel_distance_measured * measurement_weight +
-                            voxel_distance_current * voxel_weight_current) /
-                           (measurement_weight + voxel_weight_current);
-    if (fused_distance > 0.0f) {
-      fused_distance = fminf(truncation_distance_m, fused_distance);
-    } else {
-      fused_distance = fmaxf(-truncation_distance_m, fused_distance);
-    }
-    const float weight =
-        fminf(measurement_weight + voxel_weight_current, max_weight);
-    voxel_ptr->distance = fused_distance;
-    voxel_ptr->weight = weight;
-  } else if (voxel_weight_method == 5 || voxel_weight_method == 6) {
-    float normal_ratio = 1.0f;
-
-    // case 1: existing gradient, use the gradient to compute the ratio
-    if (voxel_gradient_current.norm() > kFloatEpsilon) {
-      Vector3f gradient_C;
-      // transform the gradient into the camera coordinate system
-      gradient_C = T_C_L.rotation() * voxel_gradient_current;
-
-      // case 1.1: existing gradient, existing normal
-      if (measurement_normal.norm() > kFloatEpsilon) {
-        // alpha: the angle between the normal and gradient
-        float cos_alpha =
-            abs(gradient_C.dot(measurement_normal) / measurement_normal.norm());
-        float sin_alpha = sqrt(1 - cos_alpha * cos_alpha);
-
-        // theta: the angle between the ray and gradient
-        float cos_theta =
-            abs(gradient_C.dot(measurement_point) / measurement_point.norm());
-        float sin_theta = sqrt(1 - cos_theta * cos_theta);
-
-        // condition 1: flat surface, alpha is approximate to zero
-        if (abs(1.0f - cos_alpha) < kFloatEpsilon) {
-          normal_ratio = cos_theta;
-        }
-        // condition 2: curve surface
-        else {
-          normal_ratio =
-              abs((cos_alpha - 1) * sin_theta / sin_alpha + cos_theta);
-          if (isnan(normal_ratio)) normal_ratio = cos_theta;
-        }
-      }
-      // case 1.2: existing gradient, no normal
-      else {
-        normal_ratio =
-            abs(measurement_point.dot(gradient_C) / measurement_point.norm());
-      }
-    }
-    // case 2:  no gradient
-    else {
-      // case 2.1: no gradient, existing normal
-      if (measurement_normal.norm() > kFloatEpsilon) {
-        normal_ratio = abs(measurement_point.dot(measurement_normal) /
-                           measurement_point.norm());
-      }
-    }
-    // ruling out extremely large incidence angle
-    if (normal_ratio < TSDF_NORMAL_RATIO_TH) return false;
-
-    float measurement_distance = normal_ratio * voxel_distance_measured;
-    measurement_distance = fminf(measurement_distance, truncation_distance_m);
-
-    float measurement_weight;
-    if (voxel_weight_method == 5) {
-      float weight_sensor = tsdf_sensor_weight(surface_depth_measured, 2,
-                                               TSDF_WEIGHT_DISTANCE_TH);
-      float weight_dropoff =
-          tsdf_dropoff_weight(voxel_distance_measured, truncation_distance_m);
-      measurement_weight = weight_sensor * weight_dropoff;
-    } else if (voxel_weight_method == 6) {
-      measurement_weight =
-          tsdf_linear_weight(measurement_distance, truncation_distance_m);
-    }
-
-    // NOTE(gogojjh): it is possible to have weights very close to zero, due
-    // to the limited precision of floating points dividing by this small
-    // value can cause nans
-    if (measurement_weight < kFloatEpsilon) return false;
-
-    float fused_distance = (measurement_distance * measurement_weight +
-                            voxel_distance_current * voxel_weight_current) /
-                           (measurement_weight + voxel_weight_current);
-    const float fused_weight =
-        fminf(voxel_weight_current + measurement_weight, max_weight);
-    voxel_ptr->distance = fused_distance;
-    voxel_ptr->weight = fused_weight;
-
-    // existing normal, update the gradient
-    if (measurement_normal.norm() > kFloatEpsilon) {
-      // transform the normal into the world coordinate system
-      Vector3f mea_normal_world =
-          T_C_L.rotation().transpose() * measurement_normal;
-      Vector3f fused_gradient = (voxel_weight_current * voxel_gradient_current +
-                                 measurement_weight * mea_normal_world) /
-                                (measurement_weight + voxel_weight_current);
-      fused_gradient.normalize();
-      voxel_ptr->gradient = fused_gradient;
-    }
-  }
   return true;
 }
 
@@ -501,7 +327,6 @@ __global__ void integrateBlocksKernel(
           semantic_image, u_px, rows, cols, &semantic_image_value)) {
     return;
   }
-  // printf("%d ", semantic_image_value);
 
   // Get the Voxel we'll update in this thread
   // NOTE(alexmillane): Note that we've reverse the voxel indexing order
@@ -511,44 +336,8 @@ __global__ void integrateBlocksKernel(
       &(block_device_ptrs[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
-  // **********************************************************
-  // NOTE(gogojjh): retrive the normal vector given u_px
-  // const Index2D u_C = u_px.array().round().cast<int>();
-  // Vector3f point_vector = Vector3f::Zero();
-  // Vector3f normal_vector = Vector3f::Zero();
-  // if (!getPointVectorOSLidar(lidar, u_C, rows, cols, point_vector)) return;
-  // if (!getNormalVectorOSLidar(lidar, u_C, rows, cols, normal_vector)) return;
-  // printf("(%f, %f, %f - %f, %f, %f) ", point_vector.x(),point_vector.y(),
-  //        point_vector.z(), normal_vector.x(), normal_vector.y(),
-  //        normal_vector.z());
-  // **********************************************************
-
-  // function 3
-  // Update the voxel using the update rule for this layer type
-  // NOTE(gogojjh):
-  // setting the voxel update method
-  // Projective distance:
-  //  1: constant weight, truncate the fused_distance
-  //  2: constant weight, truncate the voxel_distance_measured
-  //  3: linear weight, truncate the voxel_distance_measured
-  //  4: exponential weight, truncate the voxel_distance_measured
-  // Non-Projective distance:
-  //  5: weight and distance derived from VoxField
-  //  6: linear weight, distance derived from VoxField
-  const int voxel_weight_method = 1;
-  if (voxel_weight_method == 1) {
-    // the original nvblox impelentation
-    // not use normal vector
-    updateSemanticVoxel(semantic_image_value, voxel_ptr, voxel_depth_m,
-                        truncation_distance_m, max_weight);
-  }
-  // else {
-  //   // the improved weight computation
-  //   // use normal vector
-  //   updateVoxelMultiWeightComp(
-  //       depth_image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-  //       max_weight, voxel_weight_method, point_vector, normal_vector, T_C_L);
-  // }
+  // Update the semantic voxel
+  updateSemanticVoxel(semantic_image_value, voxel_ptr);
 }
 
 __global__ void updateColorBlocks(

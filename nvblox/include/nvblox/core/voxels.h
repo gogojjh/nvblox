@@ -66,8 +66,7 @@ struct SemanticVoxel {
   // Use log odds! So uniform ditribution of 1/kTotalNumberOfLabels,
   // should be std::log(1/kTotalNumberOfLabels)
   SemanticProbabilities semantic_priors =
-      // SemanticProbabilities::Constant(std::log(1 / kTotalNumberOfLabels));
-      SemanticProbabilities::Constant(-0.60205999132);
+      SemanticProbabilities::Constant(std::log(1 / kTotalNumberOfLabels));
 };
 
 }  // namespace nvblox
