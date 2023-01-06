@@ -29,7 +29,6 @@ limitations under the License.
 #include "nvblox/integrators/view_calculator.h"
 
 namespace nvblox {
-
 /// A class performing TSDF intregration
 ///
 /// Integrates a depth images into TSDF layers. The "projective" is a describes
@@ -119,6 +118,17 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   // NOTE(alexmillane): See the getters above for a description.
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
+
+  // NOTE(gogojjh): Set the likelihood of semantic fusion
+  float match_probability_, non_match_probability_;
+  // Log probabilities of matching measurement and prior label, and
+  // non-matching.
+  float log_match_probability_, log_non_match_probability_;
+  // confusion matrix:
+  // A `#Labels X #Labels` Eigen matrix where each `j` column represents the
+  // probability of observing label `j` when current label is `i`, where `i`
+  // is the row index of the matrix.
+  SemanticLikelihoodFunction semantic_log_likelihood_;
 
   template <typename SensorType>
   void integrateBlocksTemplate(const std::vector<Index3D>& block_indices,

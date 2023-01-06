@@ -38,36 +38,30 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 }  // namespace nvblox
 
 namespace nvblox {
-__device__ inline bool updateSemanticVoxel(const uint16_t semantic_label,
-                                           SemanticVoxel* voxel_ptr) {
+__device__ inline bool updateSemanticVoxel(
+    const uint16_t semantic_label,
+    const SemanticLikelihoodFunction* semantic_log_likelihood,
+    SemanticVoxel* voxel_ptr) {
   uint16_t update_label;
   nvblox::semantic_kitti::normalizeSemanticKittiLabel(semantic_label,
                                                       &update_label);
 
   // updateSemanticVoxelProbabilities
-  SemanticProbabilities semantic_label_frequencies;
-  semantic_label_frequencies.setZero();
-  if (update_label >= semantic_label_frequencies.size()) {
+  SemanticProbabilities measurement_frequency;
+  measurement_frequency.setZero();
+  if (update_label >= measurement_frequency.size()) {
     return false;
   }
-  semantic_label_frequencies[update_label] += 1.0f;
-
-  const float log_match_probability_ = logf(0.8f);
-  const float log_non_match_probability_ = logf(0.2f);
-
-  // TODO(gogojjh):
-  // A `#Labels X #Labels` Eigen matrix where each `j` column represents the
-  // probability of observing label `j` when current label is `i`, where `i`
-  // is the row index of the matrix.
-  // Eigen::Matrix<float, kTotalNumberOfLabels, kTotalNumberOfLabels>
-  //     semantic_log_likelihood_;
-  // semantic_log_likelihood_ =
-  //     semantic_log_likelihood_.Constant(log_non_match_probability_);
-  // semantic_log_likelihood_.diagonal() =
-  //     semantic_log_likelihood_.diagonal().Constant(log_match_probability_);
+  measurement_frequency[update_label] += 1.0f;
 
   voxel_ptr->semantic_priors +=
-      log_match_probability_ * semantic_label_frequencies;
+      (*semantic_log_likelihood) * measurement_frequency;
+
+  // ************************************************************************
+  // TODO(gogojjh): handle the case if measurement_frequency is not binary
+  // voxel_ptr->semantic_priors +=
+  //     log((semantic_likelihood * measurement_frequency).normalized());
+  // ************************************************************************
 
   // updateSemanticVoxel label by the MLE
   voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
@@ -280,7 +274,8 @@ __global__ void integrateBlocksKernel(
     const float max_integration_distance,
     const float linear_interpolation_max_allowable_difference_m,
     const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-    SemanticBlock** block_device_ptrs) {
+    SemanticBlock** block_device_ptrs,
+    SemanticLikelihoodFunction* semantic_log_likelihood) {
   // function 1
   // Get - the image-space projection of the voxel associated with this
   // thread
@@ -337,7 +332,7 @@ __global__ void integrateBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel
-  updateSemanticVoxel(semantic_image_value, voxel_ptr);
+  updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
 __global__ void updateColorBlocks(
@@ -359,6 +354,15 @@ __global__ void updateColorBlocks(
 
 ProjectiveSemanticIntegrator::ProjectiveSemanticIntegrator()
     : ProjectiveIntegratorBase() {
+  match_probability_ = 0.8f;
+  non_match_probability_ = 0.2f;
+  log_match_probability_ = std::log(match_probability_);
+  log_non_match_probability_ = std::log(non_match_probability_);
+  semantic_log_likelihood_ =
+      semantic_log_likelihood_.setConstant(log_non_match_probability_);
+  semantic_log_likelihood_.diagonal() =
+      semantic_log_likelihood_.diagonal().Constant(log_match_probability_);
+
   checkCudaErrors(cudaStreamCreate(&integration_stream_));
 }
 
@@ -522,6 +526,13 @@ void ProjectiveSemanticIntegrator::integrateBlocks(
                    voxel_size,
                2);
 
+  // initialize some params
+  SemanticLikelihoodFunction* semantic_log_likelihood_device;
+  cudaMalloc(&semantic_log_likelihood_device,
+             sizeof(SemanticLikelihoodFunction));
+  cudaMemcpy(semantic_log_likelihood_device, &semantic_log_likelihood_,
+             sizeof(SemanticLikelihoodFunction), cudaMemcpyHostToDevice);
+
   integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
                           integration_stream_>>>(
       block_indices_device_.data(),                               // NOLINT
@@ -537,10 +548,12 @@ void ProjectiveSemanticIntegrator::integrateBlocks(
       max_integration_distance_m_,                                // NOLINT
       linear_interpolation_max_allowable_difference_m,            // NOLINT
       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
-      block_ptrs_device_.data());                                 // NOLINT
+      block_ptrs_device_.data(),                                  // NOLINT
+      semantic_log_likelihood_device);                            // NOLINT
 
   // Finish processing of the frame before returning control
   finish();
+  cudaFree(semantic_log_likelihood_device);
   checkCudaErrors(cudaPeekAtLastError());
 }
 

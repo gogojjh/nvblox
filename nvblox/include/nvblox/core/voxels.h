@@ -59,6 +59,9 @@ static constexpr size_t kTotalNumberOfLabels = 20;
 // static constexpr size_t kTotalNumberOfLabels = 26;
 
 typedef Eigen::Matrix<float, kTotalNumberOfLabels, 1> SemanticProbabilities;
+typedef Eigen::Matrix<float, kTotalNumberOfLabels, kTotalNumberOfLabels>
+    SemanticLikelihoodFunction;
+
 struct SemanticVoxel {
   // Initialize voxel to unknown label.
   uint16_t semantic_label = 0u;
