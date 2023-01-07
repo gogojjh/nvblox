@@ -11,7 +11,5 @@
 	<center><img src="images/kitti_global_path.png" width="450" /></center>
   <br>
 	<center><img src="images/kitti_color_mesh.png" width="450" /></center>
-  <br>
-	<center><img src="images/semantic_map_kitti_07.png" width="450" /></center>  
 </p>
 

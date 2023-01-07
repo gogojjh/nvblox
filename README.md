@@ -21,37 +21,36 @@
     ```
 
 --------------------------
-### Demo with the [KITTI](https://www.cvlibs.net/datasets/kitti) dataset
+#### Demo with the [KITTI](https://www.cvlibs.net/datasets/kitti) dataset
 
-1. Prepare data: 
-* Download test data
-
-    * [2011_09_30_drive_0027_sync](http://gofile.me/72EEc/NGdCJrzA5)
-
-2. Run the NVBlox
-
-    ```../script/run_fuse_kitti.sh```
-
-* [Code review of Voxfield and Panmap](docs/code_review_panmap.md)
-* [Experiments on NVBlox with the KITTI dataset](docs/experiments_kitti.md)
+1. Download test data: [2011_09_30_drive_0027_sync](http://gofile.me/72EEc/NGdCJrzA5)
+2. Run: ```../script/run_fuse_kitti.sh```
+3. [Code review of Voxfield and Panmap](docs/code_review_panmap.md)
+4. [Experiments on NVBlox with the KITTI dataset](docs/experiments_kitti.md)
 
 --------------------------
-### Demo with the [FusionPortable](https://ram-lab.com/file/site/multi-sensor-dataset) dataset
+#### Demo with the [FusionPortable](https://ram-lab.com/file/site/multi-sensor-dataset) dataset
 
-1. Download test data
+1. Download test data: [20220226_campus_road_day](http://gofile.me/72EEc/MDghPwECu)
+2. Run: ```../script/run_fuse_fusionportable.sh```
+3. [Tricks to preprocess OSLiDAR points](docs/preprocess_OSLiDAR.md)
+4. [Experiments on NVBlox and VDBMapping](docs/experiments_fusionportable.md)
 
-    * [20220226_campus_road_day](http://gofile.me/72EEc/MDghPwECu)
+#### Demo with the [SemanticKITTI](https://www.cvlibs.net/datasets/kitti) dataset
 
-3. Run the NVBlox: 
+1. Prepare data: [semantickitti_sequence07](http://gofile.me/72EEc/cRYNcHLQQ)
+2. Run: ```../script/run_fuse_semantic_kitti.sh```
+3. [Experiments on NVBlox with the SemanticKITTI dataset](docs/experiments_semantickitti.md)
 
-    ```../script/run_fuse_fusionportable.sh```
+#### Demo with the [SemanticUSL](https://www.unmannedlab.org/research/SemanticUSL) dataset
 
-4. We can view the output mesh using the Open3D viewer.
-  
-    ```python3 ../../visualization/visualize_mesh.py 20220216_garden_day_mesh.ply```
+1. Prepare data: [semanticusl_sequence12](http://gofile.me/72EEc/wB0ql1Z7Q)
+2. Run: ```../script/run_fuse_semantic_usl.sh```
+3. [Experiments on NVBlox with the SemanticUSL dataset](docs/experiments_semanticusl.md)
 
-* [Tricks to preprocess OSLiDAR points](docs/preprocess_OSLiDAR.md)
-* [Experiments on NVBlox and VDBMapping](docs/experiments_fusionportable.md)
+#### Check results using the Open3D viewer
+```python3 ../../visualization/visualize_mesh.py 20220216_garden_day_mesh.ply```
+
 
 --------------------------
 # nvblox
