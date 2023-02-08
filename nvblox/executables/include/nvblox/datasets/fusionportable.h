@@ -29,8 +29,9 @@ namespace fusionportable {
 
 // NOTE(gogojjh): the default settings of preprocess height_image
 // offset
-constexpr float kDefaultUintDepthScaleFactor = 1.0f / 1000.0f;
-constexpr float kDefaultUintDepthScaleOffset = 10.0f;
+constexpr float kDefaultUintScaleFactor = 1.0f / 1000.0f;
+constexpr float kDefaultUintDepthScaleOffset = 0.0f;
+constexpr float kDefaultUintHeightScaleOffset = 10.0f;
 
 // Build a FuserLidar for the FusionPortable dataset
 std::unique_ptr<FuserLidar> createFuser(const std::string base_path,

@@ -134,7 +134,7 @@ std::unique_ptr<ImageLoader<DepthImage>> createDepthImageLoader(
     const std::string& base_path, const int seq_id, const bool multithreaded) {
   return createImageLoader<DepthImage>(
       std::bind(getPathForDepthImage, base_path, seq_id, std::placeholders::_1),
-      multithreaded, kDefaultUintDepthScaleFactor, 0.0f);
+      multithreaded, kDefaultUintScaleFactor, kDefaultUintDepthScaleOffset);
 }
 
 std::unique_ptr<ImageLoader<ColorImage>> createColorImageLoader(
@@ -145,13 +145,12 @@ std::unique_ptr<ImageLoader<ColorImage>> createColorImageLoader(
 }
 
 // TODO: we need a more proper way to set kDefaultUintDepthScaleOffset
-std::unique_ptr<ImageLoader<DepthImage>> createHeightImageLoader(
+std::unique_ptr<ImageLoader<HeightImage>> createHeightImageLoader(
     const std::string& base_path, const int seq_id, const bool multithreaded) {
-  return createImageLoader<DepthImage>(
+  return createImageLoader<HeightImage>(
       std::bind(getPathForHeightImage, base_path, seq_id,
                 std::placeholders::_1),
-      multithreaded, kDefaultUintDepthScaleFactor,
-      kDefaultUintDepthScaleOffset);
+      multithreaded, kDefaultUintScaleFactor, kDefaultUintHeightScaleOffset);
 }
 
 }  // namespace internal

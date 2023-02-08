@@ -637,7 +637,6 @@ void ProjectiveTsdfIntegrator::integrateFrameTemplate(
       view_calculator_.getBlocksInImageViewRaycast(
           depth_frame, T_L_C, sensor, layer->block_size(),
           truncation_distance_m, max_integration_distance_m_);
-  // LOG(INFO) << "block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
   // Allocate blocks (CPU)
