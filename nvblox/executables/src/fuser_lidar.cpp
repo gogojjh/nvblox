@@ -476,7 +476,7 @@ bool FuserLidar::integrateFrame(const int frame_number) {
     nvblox::cuda::freeNormalImageOSLidar(oslidar);
   }
 
-  // NOTE(gogojjh): prefer to show semantic mapping results
+  // NOTE(gogojjh): integrate color from images
   if (color_frame_subsampling_ > 0 && semantic_frame_subsampling_ < 0) {
     Transform T_W_C = T_W_B * T_B_C_;
     if ((frame_number + 1) % color_frame_subsampling_ == 0) {
