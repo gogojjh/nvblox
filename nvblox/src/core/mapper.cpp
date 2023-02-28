@@ -97,6 +97,7 @@ void RgbdMapper::integrateColor(const ColorImage& color_frame,
   color_integrator_.integrateFrame(color_frame, T_L_C, camera,
                                    layers_.get<TsdfLayer>(),
                                    layers_.getPtr<ColorLayer>());
+  LOG(INFO) << "Integrated Color block";
 }
 
 ///// Semantic Integration
