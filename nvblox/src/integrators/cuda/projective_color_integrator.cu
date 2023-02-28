@@ -375,28 +375,28 @@ void ProjectiveColorIntegrator::updateBlocks(
   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
   const int num_thread_blocks = block_indices.size();
-  // clang-format off
-  integrateBlocks<<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
-      block_indices_device_.data(),
-      camera,
-      color_frame.dataConstPtr(),
-      color_frame.rows(),
-      color_frame.cols(),
-      depth_frame.dataConstPtr(),
-      depth_frame.rows(),
-      depth_frame.cols(),
-      T_C_L,
-      layer_ptr->block_size(),
-      truncation_distance_m,
-      max_weight_,
-      max_integration_distance_m_,
-      depth_subsampling_factor,
-      block_ptrs_device_.data());
-  // clang-format on
-  checkCudaErrors(cudaPeekAtLastError());
+
+  integrateBlocks<<<num_thread_blocks, kThreadsPerBlock, 0,
+                    integration_stream_>>>(
+      block_indices_device_.data(),  // NOLINT
+      camera,                        // NOLINT
+      color_frame.dataConstPtr(),    // NOLINT
+      color_frame.rows(),            // NOLINT
+      color_frame.cols(),            // NOLINT
+      depth_frame.dataConstPtr(),    // NOLINT
+      depth_frame.rows(),            // NOLINT
+      depth_frame.cols(),            // NOLINT
+      T_C_L,                         // NOLINT
+      layer_ptr->block_size(),       // NOLINT
+      truncation_distance_m,         // NOLINT
+      max_weight_,                   // NOLINT
+      max_integration_distance_m_,   // NOLINT
+      depth_subsampling_factor,      // NOLINT
+      block_ptrs_device_.data());    // NOLINT
 
   // Finish processing of the frame before returning control
   finish();
+  checkCudaErrors(cudaPeekAtLastError());
 }
 
 __global__ void checkBlocksInTruncationBand(

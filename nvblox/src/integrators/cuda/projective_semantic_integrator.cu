@@ -215,67 +215,93 @@ __device__ inline bool getNormalVectorOSLidar(const OSLidar& lidar,
   }
 }
 
-// CAMERA
-// __global__ void integrateBlocksKernel(const Index3D*
-// block_indices_device_ptr,
-//                                       const Camera camera, const float*
-//                                       image, int rows, int cols, const
-//                                       Transform T_C_L, const float
-//                                       block_size, const float
-//                                       truncation_distance_m, const float
-//                                       max_weight, const float
-//                                       max_integration_distance, TsdfBlock**
-//                                       block_device_ptrs) {
-//   // Get - the image-space projection of the voxel associated with this
-//   // thread
-//   //     - the depth associated with the projection.
-//   Eigen::Vector2f u_px;
-//   float voxel_depth_m;
-//   Vector3f p_voxel_center_C;
-//   if (!projectThreadVoxel(block_indices_device_ptr, camera, T_C_L,
-//   block_size,
-//                           &u_px, &voxel_depth_m, &p_voxel_center_C)) {
-//     return;
-//   }
+// **********************************************
+// *********************** Camera
+// **********************************************
+template <typename CameraType>
+__global__ void integrateCameraBlocksKernel(
+    const Index3D* block_indices_device_ptr,                // NOLINT
+    const CameraType& camera,                               // NOLINT
+    const uint16_t* semantic_image,                         // NOLINT
+    const float* depth_image,                               // NOLINT
+    const int rows, const int cols,                         // NOLINT
+    const Transform T_C_L,                                  // NOLINT
+    const float block_size,                                 // NOLINT
+    const float truncation_distance_m,                      // NOLINT
+    const float max_weight,                                 // NOLINT
+    const float max_integration_distance,                   // NOLINT
+    SemanticBlock** block_device_ptrs,                      // NOLINT
+    SemanticLikelihoodFunction* semantic_log_likelihood) {  // NOLINT
+  // Get - the image-space projection of the voxel associated with this thread
+  //     - the depth associated with the projection.
+  Eigen::Vector2f u_px;
+  float voxel_depth_m;
+  Vector3f p_voxel_center_C;
+  if (!projectThreadVoxel(block_indices_device_ptr, camera, T_C_L, block_size,
+                          &u_px, &voxel_depth_m, &p_voxel_center_C)) {
+    return;
+  }
 
-//   // If voxel further away than the limit, skip this voxel
-//   if (max_integration_distance > 0.0f) {
-//     if (voxel_depth_m > max_integration_distance) {
-//       return;
-//     }
-//   }
+  // If voxel further away than the limit, skip this voxel
+  if (max_integration_distance > 0.0f) {
+    if (voxel_depth_m > max_integration_distance) {
+      return;
+    }
+  }
 
-//   // Interpolate on the image plane
-//   float image_value;
-//   if (!interpolation::interpolate2DClosest<
-//           float, interpolation::checkers::FloatPixelGreaterThanZero>(
-//           image, u_px, rows, cols, &image_value)) {
-//     return;
-//   }
+  float surface_depth_m;
+  if (!interpolation::interpolate2DLinear<float>(depth_image, u_px, rows, cols,
+                                                 &surface_depth_m)) {
+    return;
+  }
 
-//   // Get the Voxel we'll update in this thread
-//   // NOTE(alexmillane): Note that we've reverse the voxel indexing order
-//   // such that adjacent threads (x-major) access adjacent memory locations
-//   // in the block (z-major).
-//   TsdfVoxel* voxel_ptr = &(block_device_ptrs[blockIdx.x]
-//                                ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+  // Occlusion testing
+  // Get the distance of the voxel from the rendered surface. If outside
+  // truncation band, skip.
+  const float voxel_distance_from_surface = surface_depth_m - voxel_depth_m;
+  if (fabsf(voxel_distance_from_surface) > truncation_distance_m) {
+    return;
+  }
 
-//   // Update the voxel using the update rule for this layer type
-//   updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-//               max_weight);
-// }
+  // function 4: Get the closest semantic value
+  // If we can't successfully do closest, fail to intgrate this voxel.
+  uint16_t semantic_image_value;
+  if (!interpolation::interpolate2DClosest<
+          uint16_t, interpolation::checkers::PixelAlwaysValid<uint16_t>>(
+          semantic_image, u_px, rows, cols, &semantic_image_value)) {
+    return;
+  }
 
-// OSLiDAR
-__global__ void integrateBlocksKernel(
-    const Index3D* block_indices_device_ptr, const OSLidar lidar,
-    const uint16_t* semantic_image, const float* depth_image, int rows,
-    int cols, const Transform T_C_L, const float block_size,
-    const float truncation_distance_m, const float max_weight,
-    const float max_integration_distance,
-    const float linear_interpolation_max_allowable_difference_m,
-    const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
-    SemanticBlock** block_device_ptrs,
-    SemanticLikelihoodFunction* semantic_log_likelihood) {
+  // Get the Voxel we'll update in this thread
+  // NOTE(alexmillane): Note that we've reverse the voxel indexing order
+  // such that adjacent threads (x-major) access adjacent memory locations
+  // in the block (z-major).
+  SemanticVoxel* voxel_ptr =
+      &(block_device_ptrs[blockIdx.x]
+            ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
+
+  // Update the semantic voxel
+  updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
+}
+
+// **********************************************
+// *********************** LiDAR
+// **********************************************
+__global__ void integrateLidarBlocksKernel(
+    const Index3D* block_indices_device_ptr,                         // NOLINT
+    const OSLidar& lidar,                                            // NOLINT
+    const uint16_t* semantic_image,                                  // NOLINT
+    const float* depth_image,                                        // NOLINT
+    const int rows, const int cols,                                  // NOLINT
+    const Transform T_C_L,                                           // NOLINT
+    const float block_size,                                          // NOLINT
+    const float truncation_distance_m,                               // NOLINT
+    const float max_weight,                                          // NOLINT
+    const float max_integration_distance,                            // NOLINT
+    const float linear_interp_max_allowable_difference_m,            // NOLINT
+    const float nearest_interp_max_allowable_squared_dist_to_ray_m,  // NOLINT
+    SemanticBlock** block_device_ptrs,                               // NOLINT
+    SemanticLikelihoodFunction* semantic_log_likelihood) {           // NOLINT
   // function 1
   // Get - the image-space projection of the voxel associated with this
   // thread
@@ -300,8 +326,8 @@ __global__ void integrateBlocksKernel(
   float depth_image_value;
   if (!interpolateOSLidarImage(
           lidar, p_voxel_center_C, depth_image, u_px, rows, cols,
-          linear_interpolation_max_allowable_difference_m,
-          nearest_interpolation_max_allowable_squared_dist_to_ray_m,
+          linear_interp_max_allowable_difference_m,
+          nearest_interp_max_allowable_squared_dist_to_ray_m,
           &depth_image_value)) {
     return;
   }
@@ -335,6 +361,9 @@ __global__ void integrateBlocksKernel(
   updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
+// ***************************************************************
+// ***************************************************************
+// ***************************************************************
 __global__ void updateColorBlocks(
     const SemanticBlock** block_device_ptrs_semantic,
     ColorBlock** block_device_ptrs_color) {
@@ -397,24 +426,131 @@ void ProjectiveSemanticIntegrator::
   lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = value;
 }
 
+// *********************************************
+// **************** Camera
+// *********************************************
 template <typename CameraType>
 void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,
     const CameraType& camera, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
-  LOG(INFO) << "ProjectiveSemanticIntegrator::integrateFrame<CameraType>";
+  timing::Timer tsdf_timer("semantic/integrate");
   CHECK_NOTNULL(semantic_layer);
-  // updateCameraBlocks(block_indices, depth_frame, semantic_frame, T_L_C,
-  // lidar,
-  //                   semantic_layer);
+  CHECK_EQ(tsdf_layer.block_size(), semantic_layer->block_size());
+
+  // Metric truncation distance for this layer
+  const float voxel_size =
+      semantic_layer->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
+  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
+  LOG(INFO) << "[semantic] Truncation distance: " << truncation_distance_m;
+
+  // Get visible blocks
+  timing::Timer blocks_in_view_timer("semantic/integrate/get_blocks_in_view");
+  std::vector<Index3D> block_indices = view_calculator_.getBlocksInViewPlanes(
+      T_L_C, camera, semantic_layer->block_size(),
+      max_integration_distance_m_ + truncation_distance_m);
+  blocks_in_view_timer.Stop();
+
+  // Check which of these blocks are:
+  // - Allocated in the TSDF, and
+  // - have at least a single voxel within the truncation band
+  // This is because:
+  // - We don't allocate new geometry here, we just color existing geometry
+  // - We don't color freespace.
+  timing::Timer blocks_in_band_timer(
+      "semantic/integrate/reduce_to_blocks_in_band");
+  block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
+                                                      truncation_distance_m);
+  // NOTE(gogojjh): comment to be removed
+  LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
+            << block_indices.size();
+  blocks_in_band_timer.Stop();
+
+  // Allocate blocks (CPU)
+  // We allocate semantic blocks where
+  // - there are allocated TSDF blocks, AND
+  // - these blocks are within the truncation band
+  timing::Timer allocate_blocks_timer("semantic/integrate/allocate_blocks");
+  allocateBlocksWhereRequired(block_indices, semantic_layer);
+  allocate_blocks_timer.Stop();
+
+  // Create a synthetic depth image
+  timing::Timer sphere_trace_timer("semantic/integrate/sphere_trace");
+  std::shared_ptr<const DepthImage> synthetic_depth_image_ptr =
+      sphere_tracer_.renderImageOnGPU(
+          camera, T_L_C, tsdf_layer, truncation_distance_m, MemoryType::kDevice,
+          sphere_tracing_ray_subsampling_factor_);
+  sphere_trace_timer.Stop();
+
+  // Update identified blocks
+  // Calls out to the child-class implementing the integation (GPU)
+  timing::Timer update_blocks_timer("semantic/integrate/update_camera_blocks");
+  integrateBlocksTemplate(block_indices, *synthetic_depth_image_ptr,
+                          semantic_frame, T_L_C, camera, semantic_layer);
+  const Transform T_C_L = T_L_C.inverse();
+  integrateCameraBlocks(*synthetic_depth_image_ptr, semantic_frame, T_C_L,
+                        camera, semantic_layer);
+  update_blocks_timer.Stop();
+
+  if (updated_blocks != nullptr) {
+    *updated_blocks = block_indices;
+  }
 }
 
+template <typename CameraType>
+void ProjectiveSemanticIntegrator::integrateCameraBlocks(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_C_L, const CameraType& camera,
+    SemanticLayer* layer_ptr) {
+  // Kernel call - One ThreadBlock launched per VoxelBlock
+  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
+  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
+  const int num_thread_blocks = block_indices_device_.size();
+
+  // Metric truncation distance for this layer
+  const float voxel_size =
+      layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
+  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
+
+  // initialize some params related to semantic
+  SemanticLikelihoodFunction* semantic_log_likelihood_device;
+  cudaMalloc(&semantic_log_likelihood_device,
+             sizeof(SemanticLikelihoodFunction));
+  cudaMemcpy(semantic_log_likelihood_device, &semantic_log_likelihood_,
+             sizeof(SemanticLikelihoodFunction), cudaMemcpyHostToDevice);
+
+  integrateCameraBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
+                                integration_stream_>>>(
+      block_indices_device_.data(),     // NOLINT
+      camera,                           // NOLINT
+      semantic_frame.dataConstPtr(),    // NOLINT
+      depth_frame.dataConstPtr(),       // NOLINT
+      depth_frame.rows(),               // NOLINT
+      depth_frame.cols(),               // NOLINT
+      T_C_L,                            // NOLINT
+      layer_ptr->block_size(),          // NOLINT
+      truncation_distance_m,            // NOLINT
+      max_weight_,                      // NOLINT
+      max_integration_distance_m_,      // NOLINT
+      block_ptrs_device_.data(),        // NOLINT
+      semantic_log_likelihood_device);  // NOLINT
+
+  // Finish processing of the frame before returning control
+  finish();
+  cudaFree(semantic_log_likelihood_device);
+  checkCudaErrors(cudaPeekAtLastError());
+}
+
+// *********************************************
+// **************** LiDAR
+// *********************************************
 void ProjectiveSemanticIntegrator::integrateLidarFrame(
     const DepthImage& depth_frame, const SemanticImage& semantic_frame,
     const Transform& T_L_C, const OSLidar& lidar, const TsdfLayer& tsdf_layer,
     SemanticLayer* semantic_layer, std::vector<Index3D>* updated_blocks) {
-  CHECK_NOTNULL(semantic_layer);
   timing::Timer tsdf_timer("semantic/integrate");
+  CHECK_NOTNULL(semantic_layer);
+  CHECK_EQ(tsdf_layer.block_size(), semantic_layer->block_size());
 
   // Metric truncation distance for this layer
   const float voxel_size =
@@ -454,14 +590,69 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
   allocate_blocks_timer.Stop();
 
   // Update identified blocks
-  timing::Timer update_blocks_timer("semantic/integrate/update_blocks");
+  timing::Timer update_blocks_timer("semantic/integrate/update_lidar_blocks");
   integrateBlocksTemplate(block_indices, depth_frame, semantic_frame, T_L_C,
                           lidar, semantic_layer);
+  const Transform T_C_L = T_L_C.inverse();
+  integrateLidarBlocks(depth_frame, semantic_frame, T_C_L, lidar,
+                       semantic_layer);
   update_blocks_timer.Stop();
 
   if (updated_blocks != nullptr) {
     *updated_blocks = block_indices;
   }
+}
+
+void ProjectiveSemanticIntegrator::integrateLidarBlocks(
+    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
+    const Transform& T_C_L, const OSLidar& lidar, SemanticLayer* layer_ptr) {
+  // Kernel call - One ThreadBlock launched per VoxelBlock
+  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
+  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
+  const int num_thread_blocks = block_indices_device_.size();
+
+  // Metric truncation distance for this layer
+  const float voxel_size =
+      layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
+  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
+
+  // Metric params
+  const float linear_interpolation_max_allowable_difference_m =
+      lidar_linear_interpolation_max_allowable_difference_vox_ * voxel_size;
+  const float nearest_interpolation_max_allowable_squared_dist_to_ray_m =
+      std::pow(lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ *
+                   voxel_size,
+               2);
+
+  // initialize some params
+  SemanticLikelihoodFunction* semantic_log_likelihood_device;
+  cudaMalloc(&semantic_log_likelihood_device,
+             sizeof(SemanticLikelihoodFunction));
+  cudaMemcpy(semantic_log_likelihood_device, &semantic_log_likelihood_,
+             sizeof(SemanticLikelihoodFunction), cudaMemcpyHostToDevice);
+
+  integrateLidarBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
+                               integration_stream_>>>(
+      block_indices_device_.data(),                               // NOLINT
+      lidar,                                                      // NOLINT
+      semantic_frame.dataConstPtr(),                              // NOLINT
+      depth_frame.dataConstPtr(),                                 // NOLINT
+      depth_frame.rows(),                                         // NOLINT
+      depth_frame.cols(),                                         // NOLINT
+      T_C_L,                                                      // NOLINT
+      layer_ptr->block_size(),                                    // NOLINT
+      truncation_distance_m,                                      // NOLINT
+      max_weight_,                                                // NOLINT
+      max_integration_distance_m_,                                // NOLINT
+      linear_interpolation_max_allowable_difference_m,            // NOLINT
+      nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
+      block_ptrs_device_.data(),                                  // NOLINT
+      semantic_log_likelihood_device);                            // NOLINT
+
+  // Finish processing of the frame before returning control
+  finish();
+  cudaFree(semantic_log_likelihood_device);
+  checkCudaErrors(cudaPeekAtLastError());
 }
 
 template <typename SensorType>
@@ -493,71 +684,13 @@ void ProjectiveSemanticIntegrator::integrateBlocksTemplate(
   // Transfer to the device
   block_indices_device_ = block_indices_host_;
   block_ptrs_device_ = block_ptrs_host_;
-
-  // We need the inverse transform in the kernel
-  const Transform T_C_L = T_L_C.inverse();
-
-  integrateBlocks(depth_frame, semantic_frame, T_C_L, sensor, layer_ptr);
 }
 
-// OSLidar
-void ProjectiveSemanticIntegrator::integrateBlocks(
-    const DepthImage& depth_frame, const SemanticImage& semantic_frame,
-    const Transform& T_C_L, const OSLidar& lidar, SemanticLayer* layer_ptr) {
-  LOG(INFO) << "updateBLocks";
-  /// block integration
-  // Kernel call - One ThreadBlock launched per VoxelBlock
-  constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
-  const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
-  // NOTE(gogojjh): the number of visible blocks
-  const int num_thread_blocks = block_indices_device_.size();
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
 
-  // Metric truncation distance for this layer
-  const float voxel_size =
-      layer_ptr->block_size() / VoxelBlock<bool>::kVoxelsPerSide;
-  // default: 4.0 * 0.1
-  const float truncation_distance_m = truncation_distance_vox_ * voxel_size;
-
-  // Metric params
-  const float linear_interpolation_max_allowable_difference_m =
-      lidar_linear_interpolation_max_allowable_difference_vox_ * voxel_size;
-  const float nearest_interpolation_max_allowable_squared_dist_to_ray_m =
-      std::pow(lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ *
-                   voxel_size,
-               2);
-
-  // initialize some params
-  SemanticLikelihoodFunction* semantic_log_likelihood_device;
-  cudaMalloc(&semantic_log_likelihood_device,
-             sizeof(SemanticLikelihoodFunction));
-  cudaMemcpy(semantic_log_likelihood_device, &semantic_log_likelihood_,
-             sizeof(SemanticLikelihoodFunction), cudaMemcpyHostToDevice);
-
-  integrateBlocksKernel<<<num_thread_blocks, kThreadsPerBlock, 0,
-                          integration_stream_>>>(
-      block_indices_device_.data(),                               // NOLINT
-      lidar,                                                      // NOLINT
-      semantic_frame.dataConstPtr(),                              // NOLINT
-      depth_frame.dataConstPtr(),                                 // NOLINT
-      depth_frame.rows(),                                         // NOLINT
-      depth_frame.cols(),                                         // NOLINT
-      T_C_L,                                                      // NOLINT
-      layer_ptr->block_size(),                                    // NOLINT
-      truncation_distance_m,                                      // NOLINT
-      max_weight_,                                                // NOLINT
-      max_integration_distance_m_,                                // NOLINT
-      linear_interpolation_max_allowable_difference_m,            // NOLINT
-      nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
-      block_ptrs_device_.data(),                                  // NOLINT
-      semantic_log_likelihood_device);                            // NOLINT
-
-  // Finish processing of the frame before returning control
-  finish();
-  cudaFree(semantic_log_likelihood_device);
-  checkCudaErrors(cudaPeekAtLastError());
-}
-
-// NOTE(gogojjh): synchronize color with semantic
+// Synchronize color_layer using the semantic_layer
 void ProjectiveSemanticIntegrator::updateColorLayer(
     const std::vector<Index3D>& block_indices,
     const SemanticLayer& semantic_layer, ColorLayer* layer_ptr) {
@@ -602,8 +735,9 @@ void ProjectiveSemanticIntegrator::updateColorLayer(
   checkCudaErrors(cudaPeekAtLastError());
 }
 
-// *********************************************
-// *********************************************
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
 __global__ void checkBlocksInTruncationBandSemantics(
     const VoxelBlock<TsdfVoxel>** block_device_ptrs,
     const float truncation_distance_m,
