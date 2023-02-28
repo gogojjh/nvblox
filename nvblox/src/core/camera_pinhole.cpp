@@ -19,18 +19,18 @@ namespace nvblox {
 
 std::ostream& operator<<(std::ostream& os, const CameraPinhole& camera) {
   if (camera.isRectified()) {
-    os << "camera with intrinsics:\n\t"
-       << "\trectified: " << camera.isRectified() << "\n"
-       << "\tP: " << camera.P() << "\n"
-       << "\tRect: " << camera.Rect() << "\n"
-       << "\twidith: " << camera.width() << "\n"
-       << "\theight: " << camera.height() << "\n";
+    os << "Camera with intrinsics:\n"
+       << "Rectified: True\n"
+       << "P:\n " << camera.P() << "\n"
+       << "Rect:\n " << camera.Rect() << "\n"
+       << "Widith: " << camera.width() << "\n"
+       << "Height: " << camera.height() << "\n";
   } else {
-    os << "camera with intrinsics:\n\t"
-       << "\trectified: " << camera.isRectified() << "\n"
-       << "\tK: " << camera.K() << "\n"
-       << "\twidith: " << camera.width() << "\n"
-       << "\theight: " << camera.height() << "\n";
+    os << "Camera with intrinsics:\n"
+       << "Rectified: \n"
+       << "K:\n " << camera.K() << "\n"
+       << "Widith: " << camera.width() << "\n"
+       << "Height: " << camera.height() << "\n";
   }
   return os;
 }
