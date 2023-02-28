@@ -105,6 +105,8 @@ template <typename CameraType>
 void RgbdMapper::integrateCameraSemantic(const SemanticImage& semantic_frame,
                                          const Transform& T_L_C,
                                          const CameraType& camera) {
+  LOG(INFO) << "Integrated Camera Semantics";
+  return;
   semantic_integrator_.integrateCameraFrame(semantic_frame, T_L_C, camera,
                                             layers_.get<TsdfLayer>(),
                                             layers_.getPtr<SemanticLayer>());
@@ -118,8 +120,7 @@ void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
   semantic_integrator_.integrateLidarFrame(
       depth_frame, semantic_frame, T_L_C, oslidar, layers_.get<TsdfLayer>(),
       layers_.getPtr<SemanticLayer>(), &updated_blocks);
-  LOG(INFO) << "Integrated Semantic block: " << updated_blocks.size();
-
+  LOG(INFO) << "Integrated LiDAR Semantics: " << updated_blocks.size();
   semantic_integrator_.updateColorLayer(updated_blocks,
                                         layers_.get<SemanticLayer>(),
                                         layers_.getPtr<ColorLayer>());
