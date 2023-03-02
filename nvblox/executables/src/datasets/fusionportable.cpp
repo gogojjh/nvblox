@@ -222,17 +222,6 @@ DataLoadResult DataLoader::loadNext(
   }
   timer_file_coord.Stop();
 
-  // TODO(gogojjh): Load Semantic Frame
-
-  // NOTE(gogojjh): Load lidar intrinsics:
-  //  num_azimuth_divisions
-  //  num_elevation_divisions
-  //  horizontal_fov_rad
-  //  vertical_fov_rad
-  //  start_azimuth_angle_rad
-  //  end_azimuth_angle_rad
-  //  start_elevation_angle_rad
-  //  end_elevation_angle_rad
   timing::Timer timer_file_camera("file_loading/lidar");
   Eigen::Matrix<double, 8, 1> lidar_intrinsics;
   if (!fusionportable::internal::parseLidarFromFile(

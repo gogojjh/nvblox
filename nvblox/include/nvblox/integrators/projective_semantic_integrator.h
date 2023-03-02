@@ -135,11 +135,14 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   void integrateCameraBlocks(const DepthImage& depth_frame,
                              const SemanticImage& semantic_frame,
                              const Transform& T_C_L, const CameraType& camera,
+                             const float& truncation_distance_m,
                              SemanticLayer* layer_ptr);
 
   void integrateLidarBlocks(const DepthImage& depth_frame,
                             const SemanticImage& semantic_frame,
                             const Transform& T_C_L, const OSLidar& lidar,
+                            const float& voxel_size,
+                            const float& truncation_distance_m,
                             SemanticLayer* layer_ptr);
 
   template <typename SensorType>
@@ -156,7 +159,7 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
       const std::vector<Index3D>& block_indices, const TsdfLayer& tsdf_layer,
       const float truncation_distance_m);
 
-  // Params
+  // Params: the ratio to render the depth image
   int sphere_tracing_ray_subsampling_factor_ = 4;
 
   // Object to do ray tracing to generate occlusions

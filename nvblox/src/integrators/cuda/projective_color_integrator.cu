@@ -70,7 +70,7 @@ void ProjectiveColorIntegrator::integrateFrame(
       T_L_C, camera, color_layer->block_size(),
       max_integration_distance_m_ + truncation_distance_m);
   // NOTE(gogojjh): comment to be removed
-  LOG(INFO) << "[color] block_indices size: " << block_indices.size();
+  LOG(INFO) << "[color] retrieved block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
   // Check which of these blocks are:
@@ -343,6 +343,7 @@ void ProjectiveColorIntegrator::updateBlocks(
   CHECK_EQ(color_frame.rows() % depth_frame.rows(), 0);
   CHECK_EQ(color_frame.cols() % depth_frame.cols(), 0);
 
+  /// ******************************** Resize Blocks
   if (block_indices.empty()) {
     return;
   }
@@ -371,6 +372,7 @@ void ProjectiveColorIntegrator::updateBlocks(
   // We need the inverse transform in the kernel
   const Transform T_C_L = T_L_C.inverse();
 
+  /// ******************************** Integration
   // Kernel call - One ThreadBlock launched per VoxelBlock
   constexpr int kVoxelsPerSide = VoxelBlock<bool>::kVoxelsPerSide;
   const dim3 kThreadsPerBlock(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);

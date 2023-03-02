@@ -105,4 +105,15 @@
       <<<num_thread_blocks, kThreadsPerBlock, 0, integration_stream_>>>()
     ```
 
+### CUDA Programming Error
+1. __global__ void integrateLidarBlocksKernel(... const OSLidar& lidar, ...) may cause error, since **lidar** is the reference that should be initialized in the GPU memory. But if you use **const OSLidar lidar**, is the automatic copy.
+
+2. Peak cuda memory error
+```
+cudaError_t error = cudaGetLastError();
+if (error != cudaSuccess) {
+printf("CUDA error: %s\n", cudaGetErrorString(error));
+}
+```
+
 

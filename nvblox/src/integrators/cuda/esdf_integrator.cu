@@ -189,7 +189,7 @@ __global__ void markAllSitesCombinedKernel(
   }
 
   __syncthreads();
-  
+
   if (threadIdx.x == 1 && threadIdx.y == 1 && threadIdx.z == 1) {
     if (updated) {
       updated_vec[atomicAdd(updated_vec_size, 1)] = block_indices[block_idx];

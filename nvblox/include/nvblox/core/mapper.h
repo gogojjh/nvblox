@@ -145,7 +145,6 @@ class RgbdMapper : public MapperBase {
   /// @return The indices of the blocks that were updated in this call.
   std::vector<Index3D> updateMesh();
 
-  // TODO(gogojjh):
   /// Updates the mesh blocks which require an update (semantic)
   /// @return The indices of the blocks that were updated in this call.
   // std::vector<Index3D> updateSemanticMesh();

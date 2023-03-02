@@ -69,6 +69,13 @@ struct PixelAlwaysValid {
   }
 };
 
+template <typename ElementType>
+struct PixelGreaterThanZero {
+  __host__ __device__ static inline bool check(const ElementType& pixel_value) {
+    return pixel_value > static_cast<ElementType>(0);
+  }
+};
+
 struct FloatPixelGreaterThanZero {
   __host__ __device__ static inline bool check(const float& pixel_value) {
     return pixel_value > 0.0f;

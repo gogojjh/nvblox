@@ -7,12 +7,11 @@
 namespace nvblox {
 namespace semantic_kitti {
 
-constexpr size_t kTotalNumberOfLabels = 26;
-
 /*
  * \brief A function to rearange the original label of semantic KITTI
  * \reference:
  * https://github.com/VIS4ROB-lab/voxfield-panmap/blob/master/panoptic_mapping/include/panoptic_mapping/labels/semantic_kitti_all.yaml
+// constexpr size_t kTotalNumberOfLabels = 26;
  */
 __host__ __device__ inline void normalizeSemanticKittiLabel(
     const uint16_t& sem_kitti_label, uint16_t* update_label) {
