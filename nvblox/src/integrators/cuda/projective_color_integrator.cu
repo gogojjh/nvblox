@@ -69,7 +69,6 @@ void ProjectiveColorIntegrator::integrateFrame(
   std::vector<Index3D> block_indices = view_calculator_.getBlocksInViewPlanes(
       T_L_C, camera, color_layer->block_size(),
       max_integration_distance_m_ + truncation_distance_m);
-  // NOTE(gogojjh): comment to be removed
   LOG(INFO) << "[color] retrieved block_indices size: " << block_indices.size();
   blocks_in_view_timer.Stop();
 
