@@ -275,27 +275,20 @@ __global__ void integrateCameraBlocksKernel(
     return;
   }
 
-  // TODO(gogojjh): The semantic_image_value is strange
-  ////////// making the camera semantics integration wrong
-  ////////// 24.123621 349.200531 4294967303
-  // clang-format off
-  /**
-   * 66.372360 320.060699 22; 79.361977 43.828354 21; 439.610291 234.969284 7; 36.857788 61.056267 4608883629576159253; 252.762253 89.026085 4574369774896676885; 48.249874 216.293365 7; 1399.760498 204.314758 7; 61.085392 361.050079 8; 118.454796 361.308136 8; 165.840012 259.240540 22; 114.233841 151.349243 21; 164.702545 91.159966 21; 515.536316 373.297668 7; 557.775452 373.419586 7; 599.454529 373.539886 7; 640.584534 373.658569 7; 3.859093 343.261719 22; 57.595676 343.641296 22; 332.704376 201.974625 7; 340.746429 372.793152 8; 385.342926 372.921906 8; 429.331879 373.048828 8; 472.725616 373.174133 8; 2.729471 360.787506 22; 216.545242 208.649292 4595237530634289159; 10.451473 371.839783 22; 59.675537 371.981934 8; 108.195961 372.121918 8; 156.027084 372.260010 8; 196.232635 286.951630 22; 203.183853 372.396088 8; 249.680222 372.530304 8; 295.529846 372.662689 8; 85.411751 305.935303 22; 1305.414551 363.405701 26
-   * 
-  */
-  // clang-format on
-
   // function 4: Get the closest semantic value
   // If we can't successfully do closest, fail to intgrate this voxel.
   uint16_t semantic_image_value;
+  Index2D u_px_closest;
   if (!interpolation::interpolate2DClosest<
           uint16_t, interpolation::checkers::PixelAlwaysValid<uint16_t>>(
           semantic_image, u_px, semantic_rows, semantic_cols,
-          &semantic_image_value)) {
+          &semantic_image_value, &u_px_closest)) {
     return;
   }
-  if (blockIdx.x < 10) {
-    printf("%f %f %lu; ", u_px.x(), u_px.y(), semantic_image_value);
+  // NOTE(gogojjh): the semantic_image_value is sometimes strang
+  if (blockIdx.x < 5) {
+    printf("%d %d ; %d %d %u; \n", semantic_rows, semantic_cols,
+           u_px_closest.y(), u_px_closest.x(), semantic_image_value);
   }
 
   // Get the Voxel we'll update in this thread
