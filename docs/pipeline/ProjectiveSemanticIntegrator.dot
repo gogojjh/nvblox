@@ -1,0 +1,50 @@
+digraph ProjectiveSemanticIntegrator{
+  rankdir=TB
+
+  /////////////////////// 
+  /////////////////////// integrateCameraFrame
+  ///////////////////////
+  subgraph integrateCameraFrame {
+    node[shape=box]
+    getBlocksInViewPlanes -> reduceBlocksToThoseInTruncationBand;
+    reduceBlocksToThoseInTruncationBand -> allocateBlocksWhereRequired;
+    allocateBlocksWhereRequired -> renderImageOnGPU;
+  }
+
+  subgraph integrateBlocksTemplate {
+    node[shape=box]
+    reserveNewHostAndDevice -> getBlockPtrsFromIndices;
+  }
+
+  subgraph integrateCameraBlocks {
+    node[shape=box]
+    createSemanticLikelihood_GPU -> projectThreadVoxel
+    projectThreadVoxel -> interpolate2DLinear_Depth;
+    interpolate2DLinear_Depth -> interpolate2DClosest_Semantic;
+    interpolate2DClosest_Semantic -> updateSemanticVoxel;
+  }
+
+  integrateCameraFrame -> getBlocksInViewPlanes
+  renderImageOnGPU -> reserveNewHostAndDevice
+  getBlockPtrsFromIndices -> createSemanticLikelihood_GPU
+
+  /////////////////////// 
+  /////////////////////// integrateLidarFrame
+  /////////////////////// 
+  subgraph integrateLidarFrame {
+    node[shape=box]
+    getBlocksInImageViewRaycast -> reduceBlocksToThoseInTruncationBand;
+    reduceBlocksToThoseInTruncationBand -> allocateBlocksWhereRequired;
+  }
+
+  subgraph integrateLidarBlocks {
+    node[shape=box]
+    projectThreadVoxel -> interpolateOSLidarImage_Depth;
+    interpolateOSLidarImage_Depth -> interpolate2DClosest_Semantic;
+    interpolate2DClosest_Semantic -> updateSemanticVoxel;
+  }
+
+  allocateBlocksWhereRequired -> reserveNewHostAndDevice
+  integrateLidarFrame -> getBlocksInImageViewRaycast
+}
+
