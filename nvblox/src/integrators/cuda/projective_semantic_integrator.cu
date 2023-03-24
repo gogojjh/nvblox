@@ -21,6 +21,7 @@ limitations under the License.
 #include "nvblox/core/interpolation_2d.h"
 #include "nvblox/integrators/internal/cuda/projective_integrators_common.cuh"
 #include "nvblox/integrators/internal/integrators_common.h"
+#include "nvblox/utils/cityscapes_label.h"
 #include "nvblox/utils/semantickitti_label.h"
 #include "nvblox/utils/timing.h"
 #include "nvblox/utils/weight_function.h"
@@ -39,14 +40,18 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 
 namespace nvblox {
 // TODO(gogojjh): parse the labels for different datasets: semantickitti,
-// fusionportable
+// kitti360, fusionportable
 __device__ inline bool updateSemanticVoxel(
     const uint16_t semantic_label,
     const SemanticLikelihoodFunction* semantic_log_likelihood,
     SemanticVoxel* voxel_ptr) {
   uint16_t update_label = 0u;
-  nvblox::semantic_kitti::normalizeSemanticKittiLabel(semantic_label,
-                                                      &update_label);
+
+  // NOTE(gogojjh):
+  // nvblox::semantic_kitti::configSemanticKittiLabel(semantic_label,
+  // &update_label);
+  nvblox::cityscapes::configCityScapesLabel(semantic_label, &update_label);
+
   // updateSemanticVoxelProbabilities
   SemanticProbabilities measurement_frequency;
   measurement_frequency.setZero();
@@ -278,17 +283,11 @@ __global__ void integrateCameraBlocksKernel(
   // function 4: Get the closest semantic value
   // If we can't successfully do closest, fail to intgrate this voxel.
   uint16_t semantic_image_value;
-  Index2D u_px_closest;
   if (!interpolation::interpolate2DClosest<
           uint16_t, interpolation::checkers::PixelAlwaysValid<uint16_t>>(
           semantic_image, u_px, semantic_rows, semantic_cols,
-          &semantic_image_value, &u_px_closest)) {
+          &semantic_image_value)) {
     return;
-  }
-  // NOTE(gogojjh): the semantic_image_value is sometimes strang
-  if (blockIdx.x < 5) {
-    printf("%d %d ; %d %d %u; \n", semantic_rows, semantic_cols,
-           u_px_closest.y(), u_px_closest.x(), semantic_image_value);
   }
 
   // Get the Voxel we'll update in this thread
@@ -299,7 +298,7 @@ __global__ void integrateCameraBlocksKernel(
       &(block_device_ptrs[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
-  // Update the semantic voxel
+  // Update the semantic voxel (Camera)
   updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
@@ -358,8 +357,6 @@ __global__ void integrateLidarBlocksKernel(
     return;
   }
 
-  // NOTE(gogojjh): need to fix the CUDA memory error here:
-  //  block_device_ptrs
   // function 4: Get the closest semantic value
   // If we can't successfully do closest, fail to intgrate this voxel.
   uint16_t semantic_image_value;
@@ -377,7 +374,7 @@ __global__ void integrateLidarBlocksKernel(
       &(block_device_ptrs[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
-  // Update the semantic voxel
+  // Update the semantic voxel (LiDAR)
   updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
@@ -708,7 +705,7 @@ void ProjectiveSemanticIntegrator::integrateBlocksTemplate(
   block_ptrs_host_ = getBlockPtrsFromIndices(block_indices, layer_ptr);
 
   // Transfer to the device
-  // TODO(gogojjh): This is the key of transfering data from the host to the
+  // NOTE(gogojjh): This is the key of transfering data from the host to the
   // device
   block_indices_device_ = block_indices_host_;
   block_ptrs_device_ = block_ptrs_host_;

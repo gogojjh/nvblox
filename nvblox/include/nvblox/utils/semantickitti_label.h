@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SEMANTIC_KITTI_LABEL_H_
+#define SEMANTIC_KITTI_LABEL_H_
 
 #include <cuda_runtime.h>
 #include <string>
@@ -8,14 +9,14 @@ namespace nvblox {
 namespace semantic_kitti {
 
 /*
- * \brief A function to rearange the original label of semantic KITTI
+ * \brief A function to configure the original label of semantic KITTI
  * \reference:
  * https://github.com/VIS4ROB-lab/voxfield-panmap/blob/master/panoptic_mapping/include/panoptic_mapping/labels/semantic_kitti_all.yaml
 // constexpr size_t kTotalNumberOfLabels = 26;
  */
-__host__ __device__ inline void normalizeSemanticKittiLabel(
-    const uint16_t& sem_kitti_label, uint16_t* update_label) {
-  switch (sem_kitti_label) {
+__host__ __device__ inline void configSemanticKittiLabel(
+    const uint16_t& input_label, uint16_t* update_label) {
+  switch (input_label) {
     case 0u:
       *update_label = 0u;
       break;
@@ -167,14 +168,14 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
     case 2u:
       *color = Index3D(245, 230, 100);
       break;
-    case 5u:
-      *color = Index3D(250, 80, 100);
-      break;
     case 3u:
       *color = Index3D(150, 60, 30);
       break;
     case 4u:
       *color = Index3D(180, 30, 80);
+      break;
+    case 5u:
+      *color = Index3D(250, 80, 100);
       break;
     case 6u:
       *color = Index3D(30, 30, 255);
@@ -241,3 +242,5 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
 
 }  // namespace semantic_kitti
 }  // namespace nvblox
+
+#endif

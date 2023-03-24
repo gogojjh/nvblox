@@ -48,7 +48,6 @@ void ProjectiveColorIntegrator::finish() const {
   cudaStreamSynchronize(integration_stream_);
 }
 
-// NOTE(gogojjh): the API function
 template <typename CameraType>
 void ProjectiveColorIntegrator::integrateFrame(
     const ColorImage& color_frame, const Transform& T_L_C,

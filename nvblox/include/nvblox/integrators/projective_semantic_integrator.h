@@ -79,6 +79,13 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
                            SemanticLayer* semantic_layer,
                            std::vector<Index3D>* updated_blocks = nullptr);
 
+  /**
+   * Update values of the color layer according to values of the semantic layer
+   *
+   * @param block_indices The blocks to be operated
+   * @param semantic_layer The semantic layer
+   * @param layer_ptr The color layer
+   */
   void updateColorLayer(const std::vector<Index3D>& block_indices,
                         const SemanticLayer& semantic_layer,
                         ColorLayer* layer_ptr);
@@ -131,6 +138,17 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   // is the row index of the matrix.
   SemanticLikelihoodFunction semantic_log_likelihood_;
 
+  /**
+   * @brief Integrate the semantic_frame into each block
+   *
+   * @tparam CameraType
+   * @param depth_frame
+   * @param semantic_frame
+   * @param T_C_L
+   * @param camera
+   * @param truncation_distance_m
+   * @param layer_ptr
+   */
   template <typename CameraType>
   void integrateCameraBlocks(const DepthImage& depth_frame,
                              const SemanticImage& semantic_frame,
@@ -152,9 +170,17 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
                                const Transform& T_L_C, const SensorType& sensor,
                                SemanticLayer* layer_ptr);
 
-  // Takes a list of block indices and returns a subset containing the block
-  // indices containing at least on voxel inside the truncation band of the
-  // passed TSDF layer.
+  /**
+   * @brief Takes a list of block indices and returns a subset containing the
+   * block indices containing at least on voxel inside the truncation band of
+   * the passed TSDF layer.
+   *
+   * @param block_indices
+   * @param tsdf_layer
+   * @param truncation_distance_m
+   * @return std::vector<Index3D> Return the subset of block_indices containing
+   * at least one voxel
+   */
   std::vector<Index3D> reduceBlocksToThoseInTruncationBand(
       const std::vector<Index3D>& block_indices, const TsdfLayer& tsdf_layer,
       const float truncation_distance_m);

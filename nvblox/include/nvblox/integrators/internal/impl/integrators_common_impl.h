@@ -46,6 +46,13 @@ __host__ std::vector<const BlockType*> getBlockPtrsFromIndices(
   return block_ptrs;
 }
 
+/**
+ * @brief Allocate blocks (CPU) of layers
+ *
+ * @tparam VoxelType
+ * @param block_indices
+ * @param layer
+ */
 template <typename VoxelType>
 void allocateBlocksWhereRequired(const std::vector<Index3D>& block_indices,
                                  BlockLayer<VoxelBlock<VoxelType>>* layer) {
