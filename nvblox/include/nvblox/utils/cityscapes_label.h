@@ -9,7 +9,7 @@ namespace nvblox {
 namespace cityscapes {
 
 /**
- * @brief A function to configure label of cityscapes/ KITTI360
+ * @brief A function to configure label of cityscapes/KITTI360
  * reference:
  * https://github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py#L60
  *
