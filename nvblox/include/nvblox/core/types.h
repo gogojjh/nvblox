@@ -58,6 +58,7 @@ typedef Eigen::Isometry3f Transform;
 
 // NOTE(gogojjh): add other types of vectors/matrices
 typedef Eigen::Matrix<float, 4, 1> Vector4f;
+typedef Eigen::Matrix<float, 5, 1> Vector5f;
 typedef Eigen::Matrix3f Matrix3f;
 typedef Eigen::Matrix4f Matrix4f;
 typedef Eigen::Matrix<float, 3, 4> Matrix3x4f;

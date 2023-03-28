@@ -39,18 +39,16 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 }  // namespace nvblox
 
 namespace nvblox {
-// TODO(gogojjh): parse the labels for different datasets: semantickitti,
-// kitti360, fusionportable
 __device__ inline bool updateSemanticVoxel(
     const uint16_t semantic_label,
     const SemanticLikelihoodFunction* semantic_log_likelihood,
     SemanticVoxel* voxel_ptr) {
-  uint16_t update_label = 0u;
+  uint16_t update_label;
 
-  // NOTE(gogojjh):
-  // nvblox::semantic_kitti::configSemanticKittiLabel(semantic_label,
+  // TODO(gogojjh): using the dataset_type to select label
+  // nvblox::semantic_kitti::RemapSemanticKittiLabel(semantic_label,
   // &update_label);
-  nvblox::cityscapes::configCityScapesLabel(semantic_label, &update_label);
+  nvblox::cityscapes::RemapCityScapesLabel(semantic_label, &update_label);
 
   // updateSemanticVoxelProbabilities
   SemanticProbabilities measurement_frequency;
@@ -299,6 +297,8 @@ __global__ void integrateCameraBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel (Camera)
+  // DEBUG(gogojjh):
+  // semantic_image_value = 0u;
   updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
@@ -393,8 +393,11 @@ __global__ void updateColorBlocks(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   Index3D color;  // bgr
-  nvblox::semantic_kitti::updateLabelColorMap(
-      semantic_voxel_ptr->semantic_label, &color);
+  // TODO(gogojjh): using the dataset_type to select label
+  // nvblox::semantic_kitti::updateLabelColorMap(
+  //     semantic_voxel_ptr->semantic_label, &color);
+  nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
+                                          &color);
   color_voxel_ptr->color = Color(color.z(), color.y(), color.x());
 }
 
@@ -447,7 +450,6 @@ void ProjectiveSemanticIntegrator::
 // *********************************************
 // **************** Camera
 // *********************************************
-// TODO(gogojjh): The semantic (from camera) integration is not addressed
 template <typename CameraType>
 void ProjectiveSemanticIntegrator::integrateCameraFrame(
     const SemanticImage& semantic_frame, const Transform& T_L_C,

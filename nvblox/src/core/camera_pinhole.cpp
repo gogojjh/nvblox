@@ -27,7 +27,7 @@ std::ostream& operator<<(std::ostream& os, const CameraPinhole& camera) {
        << "Height: " << camera.height() << "\n";
   } else {
     os << "Camera with intrinsics:\n"
-       << "Rectified: \n"
+       << "Rectified: False\n"
        << "K:\n " << camera.K() << "\n"
        << "Widith: " << camera.width() << "\n"
        << "Height: " << camera.height() << "\n";

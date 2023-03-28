@@ -14,7 +14,7 @@ namespace semantic_kitti {
  * https://github.com/VIS4ROB-lab/voxfield-panmap/blob/master/panoptic_mapping/include/panoptic_mapping/labels/semantic_kitti_all.yaml
 // constexpr size_t kTotalNumberOfLabels = 26;
  */
-__host__ __device__ inline void configSemanticKittiLabel(
+__host__ __device__ inline void RemapSemanticKittiLabel(
     const uint16_t& input_label, uint16_t* update_label) {
   switch (input_label) {
     case 0u:
