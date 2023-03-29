@@ -105,61 +105,61 @@ __host__ __device__ inline void RemapCityScapesLabel(
 __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
                                                     Index3D* color) {
   switch (label) {
-    case 0:
+    case 0u:
       *color = Index3D(128, 64, 128);
       break;
-    case 1:
+    case 1u:
       *color = Index3D(244, 35, 232);
       break;
-    case 2:
+    case 2u:
       *color = Index3D(70, 70, 70);
       break;
-    case 3:
+    case 3u:
       *color = Index3D(102, 102, 156);
       break;
-    case 4:
+    case 4u:
       *color = Index3D(190, 153, 153);
       break;
-    case 5:
+    case 5u:
       *color = Index3D(153, 153, 153);
       break;
-    case 6:
+    case 6u:
       *color = Index3D(250, 170, 30);
       break;
-    case 7:
+    case 7u:
       *color = Index3D(220, 220, 0);
       break;
-    case 8:
+    case 8u:
       *color = Index3D(107, 142, 35);
       break;
-    case 9:
+    case 9u:
       *color = Index3D(152, 251, 152);
       break;
-    case 10:
+    case 10u:
       *color = Index3D(70, 130, 180);
       break;
-    case 11:
+    case 11u:
       *color = Index3D(220, 20, 60);
       break;
-    case 12:
+    case 12u:
       *color = Index3D(255, 0, 0);
       break;
-    case 13:
+    case 13u:
       *color = Index3D(0, 0, 142);
       break;
-    case 14:
+    case 14u:
       *color = Index3D(0, 0, 70);
       break;
-    case 15:
+    case 15u:
       *color = Index3D(0, 60, 100);
       break;
-    case 16:
+    case 16u:
       *color = Index3D(0, 80, 100);
       break;
-    case 17:
+    case 17u:
       *color = Index3D(0, 0, 230);
       break;
-    case 18:
+    case 18u:
       *color = Index3D(119, 11, 32);
       break;
     default:
