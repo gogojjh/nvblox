@@ -16,12 +16,12 @@ limitations under the License.
 #include <nvblox/integrators/projective_semantic_integrator.h>
 
 #include "nvblox/core/color.h"
-// #include "nvblox/core/color_map.h"
 #include "nvblox/core/cuda/error_check.cuh"
 #include "nvblox/core/interpolation_2d.h"
 #include "nvblox/integrators/internal/cuda/projective_integrators_common.cuh"
 #include "nvblox/integrators/internal/integrators_common.h"
 #include "nvblox/utils/cityscapes_label.h"
+#include "nvblox/utils/semanticfusionportable_label.h"
 #include "nvblox/utils/semantickitti_label.h"
 #include "nvblox/utils/timing.h"
 #include "nvblox/utils/weight_function.h"
@@ -40,19 +40,29 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 
 namespace nvblox {
 __device__ inline bool updateSemanticVoxel(
-    const uint16_t semantic_label,
-    const SemanticLikelihoodFunction* semantic_log_likelihood,
+    const int dataset_type,                                     // NOLINT
+    const uint16_t semantic_label,                              // NOLINT
+    const SemanticLikelihoodFunction* semantic_log_likelihood,  // NOLINT
     SemanticVoxel* voxel_ptr) {
+  // clang-format off
   uint16_t update_label;
-
-  // TODO(gogojjh): using the dataset_type to select label
-  // nvblox::semantic_kitti::RemapSemanticKittiLabel(semantic_label,
-  // &update_label);
-  nvblox::cityscapes::RemapCityScapesLabel(semantic_label, &update_label);
+  if (dataset_type == 1) {  // SemanticFusionPortable
+    nvblox::semanticfusionportable::RemapSemanticFusionPortableLabel(semantic_label, &update_label);
+    // Not proces unlabeled voxel
+    if (update_label == 0u) return false;
+  } else if (dataset_type == 3) {  // SemanticKitti
+    nvblox::semantic_kitti::RemapSemanticKittiLabel(semantic_label, &update_label);
+    if (update_label == 0u) return false;
+  } else if (dataset_type == 6) {  // CityScapes
+    nvblox::cityscapes::RemapCityScapesLabel(semantic_label, &update_label);
+    if (update_label == 0u) return false;
+  }
+  // clang-format on
 
   // updateSemanticVoxelProbabilities
   SemanticProbabilities measurement_frequency;
   measurement_frequency.setZero();
+  // Label exceed the preset label range
   if (update_label >= measurement_frequency.size()) {
     return false;
   }
@@ -242,6 +252,7 @@ __global__ void integrateCameraBlocksKernel(
     const float truncation_distance_m,                      // NOLINT
     const float max_weight,                                 // NOLINT
     const float max_integration_distance,                   // NOLINT
+    const int dataset_type,                                 // NOLINT
     const int depth_subsample_factor,                       // NOLINT
     SemanticBlock** block_device_ptrs,                      // NOLINT
     SemanticLikelihoodFunction* semantic_log_likelihood) {  // NOLINT
@@ -297,9 +308,8 @@ __global__ void integrateCameraBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel (Camera)
-  // DEBUG(gogojjh):
-  // semantic_image_value = 0u;
-  updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
+  updateSemanticVoxel(dataset_type, semantic_image_value,
+                      semantic_log_likelihood, voxel_ptr);
 }
 
 // **********************************************
@@ -318,6 +328,7 @@ __global__ void integrateLidarBlocksKernel(
     const float max_integration_distance,                            // NOLINT
     const float linear_interp_max_allowable_difference_m,            // NOLINT
     const float nearest_interp_max_allowable_squared_dist_to_ray_m,  // NOLINT
+    const int dataset_type,                                          // NOLINT
     SemanticBlock** block_device_ptrs,                               // NOLINT
     SemanticLikelihoodFunction* semantic_log_likelihood) {           // NOLINT
   // function 1
@@ -375,14 +386,16 @@ __global__ void integrateLidarBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel (LiDAR)
-  updateSemanticVoxel(semantic_image_value, semantic_log_likelihood, voxel_ptr);
+  updateSemanticVoxel(dataset_type, semantic_image_value,
+                      semantic_log_likelihood, voxel_ptr);
 }
 
 // ***************************************************************
 // ***************************************************************
 // ***************************************************************
 __global__ void updateColorBlocks(
-    const SemanticBlock** block_device_ptrs_semantic,
+    const int dataset_type,                            // NOLINT
+    const SemanticBlock** block_device_ptrs_semantic,  // NOLINT
     ColorBlock** block_device_ptrs_color) {
   const SemanticVoxel* semantic_voxel_ptr =
       &(block_device_ptrs_semantic[blockIdx.x]
@@ -393,11 +406,16 @@ __global__ void updateColorBlocks(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   Index3D color;  // bgr
-  // TODO(gogojjh): using the dataset_type to select label
-  // nvblox::semantic_kitti::updateLabelColorMap(
-  //     semantic_voxel_ptr->semantic_label, &color);
-  nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
-                                          &color);
+  if (dataset_type == 1) {
+    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
+                                            &color);
+  } else if (dataset_type == 3) {
+    nvblox::semantic_kitti::updateLabelColorMap(
+        semantic_voxel_ptr->semantic_label, &color);
+  } else if (dataset_type == 6) {
+    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
+                                            &color);
+  }
   color_voxel_ptr->color = Color(color.z(), color.y(), color.x());
 }
 
@@ -445,6 +463,13 @@ void ProjectiveSemanticIntegrator::
     lidar_nearest_interpolation_max_allowable_dist_to_ray_vox(float value) {
   CHECK_GT(value, 0.0f);
   lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = value;
+}
+
+int ProjectiveSemanticIntegrator::dataset_type() const { return dataset_type_; }
+
+void ProjectiveSemanticIntegrator::dataset_type(int value) {
+  CHECK_GE(value, 0);
+  dataset_type_ = value;
 }
 
 // *********************************************
@@ -559,6 +584,7 @@ void ProjectiveSemanticIntegrator::integrateCameraBlocks(
       truncation_distance_m,            // NOLINT
       max_weight_,                      // NOLINT
       max_integration_distance_m_,      // NOLINT
+      dataset_type_,                    // NOLINT
       depth_subsampling_factor,         // NOLINT
       block_ptrs_device_.data(),        // NOLINT
       semantic_log_likelihood_device);  // NOLINT
@@ -668,6 +694,7 @@ void ProjectiveSemanticIntegrator::integrateLidarBlocks(
       max_integration_distance_m_,                                // NOLINT
       linear_interpolation_max_allowable_difference_m,            // NOLINT
       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
+      dataset_type_,                                              // NOLINT
       block_ptrs_device_.data(),                                  // NOLINT
       semantic_log_likelihood_device);                            // NOLINT
 
@@ -752,8 +779,8 @@ void ProjectiveSemanticIntegrator::updateColorLayer(
   block_ptrs_device_semantic = block_ptrs_host_semantic;
   block_ptrs_device_color = block_ptrs_host_color;
 
-  updateColorBlocks<<<num_blocks, kThreadsPerBlock, 0,
-                      integration_stream_>>>(
+  updateColorBlocks<<<num_blocks, kThreadsPerBlock, 0, integration_stream_>>>(
+      dataset_type_,                      // NOLINT
       block_ptrs_device_semantic.data(),  // NOLINT
       block_ptrs_device_color.data());
 

@@ -83,6 +83,7 @@ template <typename BlockType>
 typename BlockType::Ptr BlockLayer<BlockType>::allocateBlockAtIndex(
     const Index3D& index) {
   auto it = blocks_.find(index);
+  // NOTE(gogojjh): check whether the block is already allocated.
   if (it != blocks_.end()) {
     return it->second;
   } else {
@@ -138,7 +139,7 @@ bool BlockLayer<BlockType>::isBlockAllocated(const Index3D& index) const {
 template <typename BlockType>
 void BlockLayer<BlockType>::clearBlocks(const std::vector<Index3D>& indices) {
   for (const auto& idx : indices) {
-    if(blocks_.erase(idx)) {
+    if (blocks_.erase(idx)) {
       gpu_layer_view_up_to_date_ = false;
     }
   }

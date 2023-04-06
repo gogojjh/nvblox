@@ -824,11 +824,11 @@ void ProjectiveTsdfIntegrator::integrateBlocksTemplate(
     block_ptrs_host_.reserve(new_size);
   }
 
-  // Stage on the host pinned memory
+  // Stage on the host pinned memory (CPU -> CPU)
   block_indices_host_ = block_indices;
   block_ptrs_host_ = getBlockPtrsFromIndices(block_indices, layer_ptr);
 
-  // Transfer to the device
+  // Transfer to the device (CPU -> GPU using cudaMemcpy())
   block_indices_device_ = block_indices_host_;
   block_ptrs_device_ = block_ptrs_host_;
 

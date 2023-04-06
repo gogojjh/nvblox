@@ -116,9 +116,17 @@ class ProjectiveTsdfIntegrator : public ProjectiveIntegratorBase {
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
 
-  // NOTE(gogojjh): the main function to implement the GPU-based integration
-  // Given a set of blocks in view (block_indices) perform TSDF updates on all
-  // voxels within these blocks on the GPU.
+  /**
+   * @brief The main function to implement the GPU-based integration
+   * Given a set of blocks in view (stored in
+   * block_indices_device_, block_ptrs_device_) perform TSDF updates on all
+   * voxels within these blocks on the GPU.
+   *
+   * @param depth_frame
+   * @param T_C_L
+   * @param camera
+   * @param layer_ptr
+   */
   void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
                        const Camera& camera, TsdfLayer* layer_ptr);
   void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
@@ -126,6 +134,16 @@ class ProjectiveTsdfIntegrator : public ProjectiveIntegratorBase {
   void integrateBlocks(const DepthImage& depth_frame, const Transform& T_C_L,
                        const OSLidar& lidar, TsdfLayer* layer_ptr);
 
+  /**
+   * @brief Expand and transfer block indices and ptrs to the GPU.
+   *
+   * @tparam SensorType
+   * @param block_indices
+   * @param depth_frame
+   * @param T_L_C
+   * @param sensor
+   * @param layer
+   */
   template <typename SensorType>
   void integrateBlocksTemplate(const std::vector<Index3D>& block_indices,
                                const DepthImage& depth_frame,

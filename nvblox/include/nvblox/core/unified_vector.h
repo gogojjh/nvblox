@@ -122,10 +122,12 @@ class device_vector : public unified_vector<T> {
       : unified_vector<T>(other, MemoryType::kDevice){};
   device_vector(unified_vector<T>&& other)
       : unified_vector<T>(std::move(other), MemoryType::kDevice){};
+
   device_vector& operator=(const unified_vector<T>& other) {
     unified_vector<T>::operator=(other);
     return *this;
   }
+
   device_vector& operator=(unified_vector<T>&& other) {
     unified_vector<T>::operator=(std::move(other));
     return *this;

@@ -112,7 +112,8 @@ void RgbdMapper::integrateCameraSemantic(const SemanticImage& semantic_frame,
   semantic_integrator_.updateColorLayer(updated_blocks,
                                         layers_.get<SemanticLayer>(),
                                         layers_.getPtr<ColorLayer>());
-  LOG(INFO) << "Integrated Camera Semantics: " << updated_blocks.size();
+  LOG(INFO) << "Integrated Camera Semantics Voxel Blocks: "
+            << updated_blocks.size();
 }
 
 void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
@@ -126,7 +127,8 @@ void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
   semantic_integrator_.updateColorLayer(updated_blocks,
                                         layers_.get<SemanticLayer>(),
                                         layers_.getPtr<ColorLayer>());
-  LOG(INFO) << "Integrated LiDAR Semantics: " << updated_blocks.size();
+  LOG(INFO) << "Integrated LiDAR Semantics Voxel Blocks: "
+            << updated_blocks.size();
 }
 
 ///// Mesh Integration

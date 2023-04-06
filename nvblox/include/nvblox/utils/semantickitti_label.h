@@ -19,6 +19,7 @@ __host__ __device__ inline void RemapSemanticKittiLabel(
   switch (input_label) {
     case 0u:
       *update_label = 0u;
+      // label_name = "UnLabeled";
       break;
     case 1u:
       *update_label = 0u;

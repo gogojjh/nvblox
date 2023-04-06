@@ -176,6 +176,7 @@ __global__ void meshBlocksCalculateTableIndicesKernel(
 
       const TsdfVoxel* voxel = nullptr;
       // Don't look for neighbors for now.
+      // NOTE(gogojjh): get the neighboor voxels
       if (search_neighbor) {
         int neighbor_index =
             marching_cubes::neighborIndexFromDirection(block_offset);
@@ -270,7 +271,6 @@ __global__ void meshBlocksCalculateVerticesKernel(
 }
 
 // Wrappers
-
 void MeshIntegrator::getMeshableBlocksGPU(
     const TsdfLayer& distance_layer, const std::vector<Index3D>& block_indices,
     float cutoff_distance, std::vector<Index3D>* meshable_blocks) {
@@ -375,6 +375,9 @@ void MeshIntegrator::meshBlocksGPU(const TsdfLayer& distance_layer,
   // Run the first half of marching cubes and calculate:
   // - the per-vertex indexes into the magic triangle table
   // - the number of vertices in each mesh block.
+  // Output
+  //   marching_cubes_results_device_
+  //   mesh_block_sizes_device_
   timing::Timer mesh_kernel_1_timer("mesh/gpu/mesh_blocks/kernel_table");
   meshBlocksCalculateTableIndicesKernel<<<dim_block, dim_threads, 0,
                                           cuda_stream_>>>(
@@ -383,7 +386,6 @@ void MeshIntegrator::meshBlocksGPU(const TsdfLayer& distance_layer,
       marching_cubes_results_device_.data(), mesh_block_sizes_device_.data());
   checkCudaErrors(cudaPeekAtLastError());
   checkCudaErrors(cudaStreamSynchronize(cuda_stream_));
-
   mesh_kernel_1_timer.Stop();
 
   // Copy back the new mesh block sizes (so we can allocate space)

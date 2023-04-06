@@ -121,11 +121,23 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
   /// @param the new parameter value
   void lidar_nearest_interpolation_max_allowable_dist_to_ray_vox(float value);
 
+  int dataset_type() const;
+
+  /**
+   * @brief Set the dataset type for parsing dataset label
+   *
+   * @param dataset_type
+   */
+  void dataset_type(int dataset_type);
+
  protected:
   // Params
   // NOTE(alexmillane): See the getters above for a description.
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
+
+  // Dataset type
+  float dataset_type_ = 0;
 
   // NOTE(gogojjh): Set the likelihood of semantic fusion
   float match_probability_, non_match_probability_;
