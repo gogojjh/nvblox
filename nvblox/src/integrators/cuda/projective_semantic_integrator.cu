@@ -401,21 +401,20 @@ __global__ void updateColorBlocks(
       &(block_device_ptrs_semantic[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
+  // clang-format off
+  Index3D color;            // bgr
+  if (dataset_type == 1) {  // SemanticFusionPortable
+    nvblox::semanticfusionportable::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+  } else if (dataset_type == 3) {  // SemanticKitti
+    nvblox::semantic_kitti::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+  } else if (dataset_type == 6) {  // CityScapes
+    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+  }
+  // clang-format on
+
   ColorVoxel* color_voxel_ptr =
       &(block_device_ptrs_color[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
-
-  Index3D color;  // bgr
-  if (dataset_type == 1) {
-    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
-                                            &color);
-  } else if (dataset_type == 3) {
-    nvblox::semantic_kitti::updateLabelColorMap(
-        semantic_voxel_ptr->semantic_label, &color);
-  } else if (dataset_type == 6) {
-    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label,
-                                            &color);
-  }
   color_voxel_ptr->color = Color(color.z(), color.y(), color.x());
 }
 
