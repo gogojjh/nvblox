@@ -38,17 +38,10 @@ template <typename VoxelType>
 bool outputVoxelLayerToPly(const VoxelBlockLayer<VoxelType>& layer,
                            const std::string& filename);
 
-/// Specializations for the TSDF type.
-template <>
-bool outputVoxelLayerToPly(const TsdfLayer& layer, const std::string& filename);
-
-/// Specialization for the ESDF type.
-template <>
-bool outputVoxelLayerToPly(const EsdfLayer& layer, const std::string& filename);
-
-/// Specialization for the obstacle information.
-// template <>
-bool outputZeroCrossingToPly(const EsdfLayer& layer,
+/// NOTE(gogojjh):
+/// Only output point within the zero-crossing level
+template <typename VoxelType>
+bool outputZeroCrossingToPly(const VoxelBlockLayer<VoxelType>& layer,
                              const std::string& filename);
 
 }  // namespace io

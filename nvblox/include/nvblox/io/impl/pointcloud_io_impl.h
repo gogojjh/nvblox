@@ -21,7 +21,6 @@ limitations under the License.
 namespace nvblox {
 namespace io {
 
-/// NOTE(gogojjh): This function outputs TSDF and ESDF map to a file
 /// Outputs a voxel layer as a pointcloud with the lambda function deciding the
 /// intensity.
 template <typename VoxelType>
@@ -33,7 +32,7 @@ bool outputVoxelLayerToPly(
 
   // Combine all the voxels in the mesh into a pointcloud.
   std::vector<Vector3f> points;
-  std::vector<float> intensities;  // NOTE(gogojjh): record the distance
+  std::vector<float> intensities;
 
   constexpr int kVoxelsPerSide = VoxelBlock<VoxelType>::kVoxelsPerSide;
   const float block_size = layer.block_size();
@@ -59,48 +58,6 @@ bool outputVoxelLayerToPly(
 
   // Write out the ply.
   return writer.write();
-}
-
-/// Specializations for the TSDF type.
-template <>
-bool outputVoxelLayerToPly(const TsdfLayer& layer,
-                           const std::string& filename) {
-  constexpr float kMinWeight = 0.1f;
-  auto lambda = [&kMinWeight](const TsdfVoxel* voxel, float* distance) -> bool {
-    *distance = voxel->distance;
-    return voxel->weight > kMinWeight;
-  };
-  return outputVoxelLayerToPly<TsdfVoxel>(layer, filename, lambda);
-}
-
-/// Specialization for the ESDF type.
-template <>
-bool outputVoxelLayerToPly(const EsdfLayer& layer,
-                           const std::string& filename) {
-  const float voxel_size = layer.voxel_size();
-  auto lambda = [&voxel_size](const EsdfVoxel* voxel, float* distance) -> bool {
-    *distance = voxel_size * std::sqrt(voxel->squared_distance_vox);
-    if (voxel->is_inside) {
-      *distance = -*distance;
-    }
-    return voxel->observed;
-  };
-  return outputVoxelLayerToPly<EsdfVoxel>(layer, filename, lambda);
-}
-
-/// NOTE(gogojjh): Specialization for the obstacle information.
-// template <>
-bool outputZeroCrossingToPly(const EsdfLayer& layer,
-                             const std::string& filename) {
-  const float voxel_size = layer.voxel_size();
-  auto lambda = [&voxel_size](const EsdfVoxel* voxel, float* distance) -> bool {
-    *distance = voxel_size * std::sqrt(voxel->squared_distance_vox);
-    if (voxel->is_inside) {
-      *distance = -*distance;
-    }
-    return voxel->is_site;
-  };
-  return outputVoxelLayerToPly<EsdfVoxel>(layer, filename, lambda);
 }
 
 }  // namespace io

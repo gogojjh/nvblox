@@ -123,6 +123,7 @@ add_library(nvblox_lib SHARED
     src/io/mesh_io.cpp
     src/io/ply_writer.cpp
     src/io/layer_cake_io.cpp
+    src/io/pointcloud_io.cpp
     src/mesh/marching_cubes.cu
     src/mesh/mesh_block.cu
     src/mesh/mesh_integrator_color.cu
