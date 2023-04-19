@@ -537,7 +537,7 @@ bool FuserLidar::outputPointcloudPly() {
 
 bool FuserLidar::outputZeroCrossingPly() {
   timing::Timer timer_write("fuser/obstacle/write");
-  return io::outputZeroCrossingToPly(mapper_->esdf_layer(), obs_output_path_);
+  return io::outputLowDistanceToPly(mapper_->esdf_layer(), obs_output_path_);
 }
 
 bool FuserLidar::outputMeshPly() {

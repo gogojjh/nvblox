@@ -24,21 +24,33 @@ namespace nvblox {
 namespace io {
 
 bool outputMeshLayerToPly(const BlockLayer<MeshBlock>& layer,
-                          const std::string& filename) {
+                          const std::string& filename_mesh,
+                          const std::string& filename_pts) {
   // TODO: doesn't support intensity yet!!!!
   const Mesh mesh = Mesh::fromLayer(layer);
 
-  // Create the ply writer object
-  io::PlyWriter writer(filename);
-  writer.setPoints(&mesh.vertices);
-  writer.setTriangles(&mesh.triangles);
-  if (mesh.normals.size() > 0) {
-    writer.setNormals(&mesh.normals);
+  if (!filename_pts.empty()) {
+    io::PlyWriter writer(filename_pts);
+    writer.setPoints(&mesh.vertices);
+    if (mesh.colors.size() > 0) {
+      writer.setColors(&mesh.colors);
+    }
+    writer.write();
   }
-  if (mesh.colors.size() > 0) {
-    writer.setColors(&mesh.colors);
+
+  {
+    // Create the ply writer object
+    io::PlyWriter writer(filename_mesh);
+    writer.setPoints(&mesh.vertices);
+    writer.setTriangles(&mesh.triangles);
+    if (mesh.normals.size() > 0) {
+      writer.setNormals(&mesh.normals);
+    }
+    if (mesh.colors.size() > 0) {
+      writer.setColors(&mesh.colors);
+    }
+    return writer.write();
   }
-  return writer.write();
 }
 
 }  // namespace io

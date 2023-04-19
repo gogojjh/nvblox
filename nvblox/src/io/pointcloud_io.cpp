@@ -58,14 +58,18 @@ bool outputVoxelLayerToPly(const EsdfLayer& layer,
 }
 
 /// NOTE(gogojjh):
-/// Specialization for the TSDF type in outputing zero-crossing
+/// Specialization for the TSDF type in outputing voxels in low distance
 template <>
-bool outputZeroCrossingToPly(const TsdfLayer& layer,
-                             const std::string& filename) {
-  const float voxel_size = layer.voxel_size();
-  auto lambda = [&voxel_size](const TsdfVoxel* voxel, float* distance) -> bool {
+bool outputLowDistanceToPly(const TsdfLayer& layer,
+                            const std::string& filename) {
+  // constexpr float kMinDistance_isosurface = 0.1f;
+  const float kMinDistance_isosurface = layer.voxel_size() * 0.5;
+  constexpr float kMinWeight = 0.1f;
+  auto lambda = [&kMinDistance_isosurface, &kMinWeight](
+                    const TsdfVoxel* voxel, float* distance) -> bool {
     *distance = std::abs(voxel->distance);
-    if (std::abs(voxel->distance) <= 0.01) {
+    if ((std::abs(voxel->distance) <= kMinDistance_isosurface) &&
+        (voxel->weight > kMinWeight)) {
       return true;
     } else {
       return false;
@@ -74,10 +78,10 @@ bool outputZeroCrossingToPly(const TsdfLayer& layer,
   return outputVoxelLayerToPly<TsdfVoxel>(layer, filename, lambda);
 }
 
-/// Specialization for the ESDF type in outputing zero-crossing
+/// Specialization for the ESDF type in outputing voxels in low distance
 template <>
-bool outputZeroCrossingToPly(const EsdfLayer& layer,
-                             const std::string& filename) {
+bool outputLowDistanceToPly(const EsdfLayer& layer,
+                            const std::string& filename) {
   const float voxel_size = layer.voxel_size();
   auto lambda = [&voxel_size](const EsdfVoxel* voxel, float* distance) -> bool {
     *distance = voxel_size * std::sqrt(voxel->squared_distance_vox);

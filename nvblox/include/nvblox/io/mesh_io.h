@@ -31,7 +31,8 @@ void combineMeshBlocks(const BlockLayer<MeshBlock>& layer,
                        std::vector<int>* triangles_ptr);
 
 bool outputMeshLayerToPly(const BlockLayer<MeshBlock>& layer,
-                          const std::string& filename);
+                          const std::string& filename_mesh,
+                          const std::string& filename_pts = "");
 
 }  // namespace io
 }  // namespace nvblox

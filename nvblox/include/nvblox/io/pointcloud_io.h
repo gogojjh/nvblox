@@ -41,8 +41,8 @@ bool outputVoxelLayerToPly(const VoxelBlockLayer<VoxelType>& layer,
 /// NOTE(gogojjh):
 /// Only output point within the zero-crossing level
 template <typename VoxelType>
-bool outputZeroCrossingToPly(const VoxelBlockLayer<VoxelType>& layer,
-                             const std::string& filename);
+bool outputLowDistanceToPly(const VoxelBlockLayer<VoxelType>& layer,
+                            const std::string& filename);
 
 }  // namespace io
 }  // namespace nvblox
