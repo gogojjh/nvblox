@@ -110,11 +110,18 @@ class ProjectiveTsdfIntegrator : public ProjectiveIntegratorBase {
   /// @param the new parameter value
   void lidar_nearest_interpolation_max_allowable_dist_to_ray_vox(float value);
 
+  void voxel_weight_method(int voxel_weight_method) {
+    voxel_weight_method_ = voxel_weight_method;
+  }
+
  protected:
   // Params
   // NOTE(alexmillane): See the getters above for a description.
   float lidar_linear_interpolation_max_allowable_difference_vox_ = 2.0f;
   float lidar_nearest_interpolation_max_allowable_dist_to_ray_vox_ = 0.5f;
+
+  // NOTE(gogojjh): Weighting method
+  int voxel_weight_method_ = 6;
 
   /**
    * @brief The main function to implement the GPU-based integration

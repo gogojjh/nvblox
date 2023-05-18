@@ -26,134 +26,136 @@ __host__ __device__ inline void RemapSemanticKittiLabel(
       break;
     case 10u:
       *update_label = 1u;
-      // label_name = "Car";
+      // label_name = "CAR"
       break;
     case 11u:
       *update_label = 2u;
-      // label_name = "Bicycle";
+      // label_name = "BICYCLE"
       break;
     case 13u:
-      *update_label = 5u;
-      // label_name = "Bus";
+      *update_label = 3u;
+      // label_name = "BUS"
       break;
     case 15u:
-      *update_label = 3u;
-      // label_name = "Motorcycle";
+      *update_label = 4u;
+      // label_name = "MOTORCYCLE"
       break;
     case 16u:
       *update_label = 5u;
-      // label_name = "Tram";
+      // label_name = "ON-RAILS"
       break;
     case 18u:
-      *update_label = 4u;
-      // label_name = "Truck";
+      *update_label = 6u;
+      // label_name = "TRUCK"
       break;
     case 20u:
-      *update_label = 5u;
-      // label_name = "OtherVehicle";
+      *update_label = 7u;
+      // label_name = "OTHER-VEHICLE"
       break;
     case 30u:
-      *update_label = 6u;
-      // label_name = "Person";
+      *update_label = 8u;
+      // label_name = "PERSON"
       break;
     case 31u:
-      *update_label = 7u;
-      // label_name = "Bicyclist";
+      *update_label = 9u;
+      // label_name = "BICYCLIST"
       break;
     case 32u:
-      *update_label = 8u;
-      // label_name = "Motorcyclist";
+      *update_label = 10u;
+      // label_name = "MOTORCYCLIST"
       break;
     case 40u:
-      *update_label = 9u;
-      // label_name = "Road";
+      *update_label = 11u;
+      // label_name = "ROAD"
       break;
     case 44u:
-      *update_label = 10u;
-      // label_name = "Parking";
+      *update_label = 12u;
+      // label_name = "PARKING"
       break;
     case 48u:
-      *update_label = 11u;
-      // label_name = "Sidewalk";
+      *update_label = 13u;
+      // label_name = "SIDEWALK"
       break;
     case 49u:
-      *update_label = 12u;
-      // label_name = "Ground";
+      *update_label = 14u;
+      // label_name = "OTHER-GROUND"
       break;
     case 50u:
-      *update_label = 13u;
-      // label_name = "Building";
+      *update_label = 15u;
+      // label_name = "BUILDING"
       break;
     case 51u:
-      *update_label = 15u;
-      // label_name = "Fence";
+      *update_label = 16u;
+      // label_name = "FENCE"
       break;
     case 52u:
-      *update_label = 16u;
-      // label_name = "Structure";
+      *update_label = 17u;
+      // label_name = "OTHER-STRUCTURE"
       break;
     case 60u:
-      *update_label = 9u;
-      // label_name = "Roadmarking";
+      *update_label = 18u;
+      // label_name = "LANE-MARKING"
       break;
     case 70u:
-      *update_label = 15u;
-      // label_name = "Vegetation";
+      *update_label = 19u;
+      // label_name = "VEGETATION"
       break;
     case 71u:
-      *update_label = 16u;
-      // label_name = "Trunck";
+      *update_label = 20u;
+      // label_name = "TRUNK"
       break;
     case 72u:
-      *update_label = 17u;
-      // label_name = "Terrain";
+      *update_label = 21u;
+      // label_name = "TERRAIN"
       break;
     case 80u:
-      *update_label = 18u;
-      // label_name = "Pole";
+      *update_label = 22u;
+      // label_name = "POLE"
       break;
     case 81u:
-      *update_label = 19u;
-      // label_name = "Traffic_sign";
+      *update_label = 23u;
+      // label_name = "TRAFFIC-SIGN"
       break;
     case 99u:
-      *update_label = 0u;
-      // label_name = "Other_Object";
+      *update_label = 24u;
+      // label_name = "OTHER-OBJECT"
       break;
     case 252u:
-      *update_label = 20u;
-      // label_name = "Car";
+      *update_label = 25u;
+      // label_name = "MOVING-CAR"
       break;
     case 253u:
-      *update_label = 21u;
-      // label_name = "Bicycle";
+      *update_label = 26u;
+      // label_name = "MOVING-BICYCLIST"
       break;
     case 254u:
-      *update_label = 22u;
-      // label_name = "Person";
+      *update_label = 27u;
+      // label_name = "MOVING-PERSON"
       break;
     case 255u:
-      *update_label = 23u;
-      // label_name = "Motorcycle";
+      *update_label = 28u;
+      // label_name = "MOVING-MOTORCYCLIST"
       break;
     case 256u:
-      *update_label = 24u;
-      // label_name = "Tram";
+      *update_label = 29u;
+      // label_name = "MOVING-ON-RAILS"
       break;
     case 257u:
-      *update_label = 24u;
-      // label_name = "Bus";
+      *update_label = 30u;
+      // label_name = "MOVING-BUS"
       break;
     case 258u:
-      *update_label = 25u;
-      // label_name = "Truck";
+      *update_label = 31u;
+      // label_name = "MOVING-TRUCK"
       break;
     case 259u:
-      *update_label = 24u;
-      // label_name = "OtherVehicle";
+      *update_label = 32u;
+      // label_name = "MOVING-OTHER-VEHICLE"
       break;
     default:
       *update_label = 0u;
+      // label_name = "UNLABELED"
+      break;
   }
 }
 
@@ -170,70 +172,94 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       *color = Index3D(245, 230, 100);
       break;
     case 3u:
-      *color = Index3D(150, 60, 30);
-      break;
-    case 4u:
-      *color = Index3D(180, 30, 80);
-      break;
-    case 5u:
       *color = Index3D(250, 80, 100);
       break;
-    case 6u:
-      *color = Index3D(30, 30, 255);
+    case 4u:
+      *color = Index3D(150, 60, 30);
       break;
-    case 7u:
-      *color = Index3D(200, 40, 255);
-      break;
-    case 8u:
-      *color = Index3D(90, 30, 150);
-      break;
-    case 9u:
-      *color = Index3D(255, 0, 255);
-      break;
-    case 10u:
-      *color = Index3D(255, 150, 255);
-      break;
-    case 11u:
-      *color = Index3D(75, 0, 75);
-      break;
-    case 12u:
-      *color = Index3D(75, 0, 175);
-      break;
-    case 13u:
-      *color = Index3D(0, 200, 255);
-      break;
-    case 15u:
-      *color = Index3D(50, 120, 255);
-      break;
-    case 16u:
-      *color = Index3D(0, 150, 255);
-      break;
-    case 17u:
-      *color = Index3D(80, 240, 150);
-      break;
-    case 18u:
-      *color = Index3D(150, 240, 255);
-      break;
-    case 19u:
-      *color = Index3D(0, 0, 255);
-      break;
-    case 20u:
-      *color = Index3D(245, 150, 100);
-      break;
-    case 21u:
+    case 5u:
       *color = Index3D(255, 0, 0);
       break;
-    case 22u:
-      *color = Index3D(200, 40, 255);
+    case 6u:
+      *color = Index3D(180, 30, 80);
       break;
-    case 23u:
+    case 7u:
+      *color = Index3D(255, 0, 0);
+      break;
+    case 8u:
       *color = Index3D(30, 30, 255);
       break;
-    case 24u:
+    case 9u:
+      *color = Index3D(200, 40, 255);
+      break;
+    case 10u:
       *color = Index3D(90, 30, 150);
       break;
+    case 11u:
+      *color = Index3D(255, 0, 255);
+      break;
+    case 12u:
+      *color = Index3D(255, 150, 255);
+      break;
+    case 13u:
+      *color = Index3D(75, 0, 75);
+      break;
+    case 14u:
+      *color = Index3D(75, 0, 175);
+      break;
+    case 15u:
+      *color = Index3D(0, 200, 255);
+      break;
+    case 16u:
+      *color = Index3D(50, 120, 255);
+      break;
+    case 17u:
+      *color = Index3D(0, 150, 255);
+      break;
+    case 18u:
+      *color = Index3D(170, 255, 150);
+      break;
+    case 19u:
+      *color = Index3D(0, 175, 0);
+      break;
+    case 20u:
+      *color = Index3D(0, 60, 135);
+      break;
+    case 21u:
+      *color = Index3D(80, 240, 150);
+      break;
+    case 22u:
+      *color = Index3D(150, 240, 255);
+      break;
+    case 23u:
+      *color = Index3D(0, 0, 255);
+      break;
+    case 24u:
+      *color = Index3D(255, 255, 50);
+      break;
     case 25u:
+      *color = Index3D(245, 150, 100);
+      break;
+    case 26u:
+      *color = Index3D(255, 0, 0);
+      break;
+    case 27u:
+      *color = Index3D(200, 40, 255);
+      break;
+    case 28u:
+      *color = Index3D(30, 30, 255);
+      break;
+    case 29u:
+      *color = Index3D(90, 30, 150);
+      break;
+    case 30u:
+      *color = Index3D(250, 80, 100);
+      break;
+    case 31u:
       *color = Index3D(180, 30, 80);
+      break;
+    case 32u:
+      *color = Index3D(255, 0, 0);
       break;
     default:
       *color = Index3D(127, 127, 127);

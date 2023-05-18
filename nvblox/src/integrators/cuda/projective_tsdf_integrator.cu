@@ -503,7 +503,8 @@ __global__ void integrateBlocksKernel(
     const Index3D* block_indices_device_ptr, const OSLidar lidar,
     const float* image, int rows, int cols, const Transform T_C_L,
     const float block_size, const float truncation_distance_m,
-    const float max_weight, const float max_integration_distance,
+    const float max_weight, const int voxel_weight_method,
+    const float max_integration_distance,
     const float linear_interpolation_max_allowable_difference_m,
     const float nearest_interpolation_max_allowable_squared_dist_to_ray_m,
     TsdfBlock** block_device_ptrs) {
@@ -560,26 +561,16 @@ __global__ void integrateBlocksKernel(
   // NOTE(gogojjh):
   // setting the voxel update method
   // Projective distance:
-  //  1: constant weight, truncate the fused_distance
+  //  1: (original) constant weight, truncate the fused_distance
   //  2: constant weight, truncate the voxel_distance_measured
   //  3: linear weight, truncate the voxel_distance_measured
   //  4: exponential weight, truncate the voxel_distance_measured
   // Non-Projective distance:
   //  5: weight and distance derived from VoxField
   //  6: linear weight, distance derived from VoxField
-  const int voxel_weight_method = 6;
-  if (voxel_weight_method == 1) {
-    // the original nvblox impelentation
-    // not use normal vector
-    updateVoxel(image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-                max_weight);
-  } else {
-    // the improved weight computation
-    // use normal vector
-    updateVoxelMultiWeightComp(
-        image_value, voxel_ptr, voxel_depth_m, truncation_distance_m,
-        max_weight, voxel_weight_method, point_vector, normal_vector, T_C_L);
-  }
+  updateVoxelMultiWeightComp(
+      image_value, voxel_ptr, voxel_depth_m, truncation_distance_m, max_weight,
+      voxel_weight_method, point_vector, normal_vector, T_C_L);
 }
 
 ProjectiveTsdfIntegrator::ProjectiveTsdfIntegrator()
@@ -793,6 +784,7 @@ void ProjectiveTsdfIntegrator::integrateBlocks(const DepthImage& depth_frame,
       layer_ptr->block_size(),                                    // NOLINT
       truncation_distance_m,                                      // NOLINT
       max_weight_,                                                // NOLINT
+      voxel_weight_method_,                                       // NOLINT
       max_integration_distance_m_,                                // NOLINT
       linear_interpolation_max_allowable_difference_m,            // NOLINT
       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT

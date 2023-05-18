@@ -630,8 +630,8 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
       "semantic/integrate/reduce_to_blocks_in_band");
   block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
                                                       truncation_distance_m);
-  LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
-            << block_indices.size();
+  // LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
+  //           << block_indices.size();
   blocks_in_band_timer.Stop();
   // ***********************************************************
 

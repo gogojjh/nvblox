@@ -436,6 +436,10 @@ void MeshIntegrator::meshBlocksGPU(const TsdfLayer& distance_layer,
   mesh_kernel_2_timer.Stop();
 
   // Optional third stage: welding.
+  // - Welding vertices is the process of merging two or more vertices
+  //   that are close to each other into a single vertex.
+  // - This is typically done to reduce the number of vertices in a mesh while
+  //   maintaining its shape and surface details.
   if (weld_vertices_) {
     timing::Timer welding_timer("mesh/gpu/mesh_blocks/welding");
     weldVertices(&mesh_blocks_device_);

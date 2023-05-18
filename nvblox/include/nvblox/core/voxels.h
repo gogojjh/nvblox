@@ -52,11 +52,8 @@ struct ColorVoxel {
   float weight = 0.0f;
 };
 
-// NOTE(gogojjh): not consider moving object
-// static constexpr size_t kTotalNumberOfLabels = 20;
-
 // NOTE(gogojjh): default
-static constexpr size_t kTotalNumberOfLabels = 26;
+static constexpr size_t kTotalNumberOfLabels = 23;
 
 typedef Eigen::Matrix<float, kTotalNumberOfLabels, 1> SemanticProbabilities;
 typedef Eigen::Matrix<float, kTotalNumberOfLabels, kTotalNumberOfLabels>
