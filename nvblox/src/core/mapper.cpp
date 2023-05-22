@@ -39,6 +39,7 @@ namespace nvblox {
 //////////////////////////////////////////////////////////////////////
 RgbdMapper::RgbdMapper(float voxel_size_m, MemoryType memory_type)
     : voxel_size_m_(voxel_size_m), memory_type_(memory_type) {
+  // NOTE(gogojjh): create layer
   layers_ = LayerCake::create<TsdfLayer, ColorLayer, EsdfLayer, MeshLayer,
                               SemanticLayer>(voxel_size_m_, memory_type);
 }

@@ -19,7 +19,7 @@ namespace io {
 template <>
 bool outputVoxelLayerToPly(const TsdfLayer& layer,
                            const std::string& filename) {
-  constexpr float kMinWeight = 0.1f;
+  constexpr float kMinWeight = 0.00001f;
   auto lambda = [&kMinWeight](const TsdfVoxel* voxel, float* distance) -> bool {
     *distance = voxel->distance;
     return voxel->weight > kMinWeight;

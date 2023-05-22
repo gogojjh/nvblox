@@ -35,9 +35,16 @@ __global__ void computeNormalImageOSLidar(
       float d1 = image::access<float>(v, uu, w, depth_image);
       float d2 = image::access<float>(vv, u, w, depth_image);
       // on the boundary, not continous
-      if (abs(d - d1) > 0.9 * d) continue;
-      // on the boundary, not continous
-      if (abs(d - d2) > 0.9 * d) continue;
+
+      if (d > 5.0) {
+        if (abs(d - d1) > 1.0f) continue;
+        // on the boundary, not continous
+        if (abs(d - d2) > 1.0f) continue;
+      } else {
+        if (abs(d - d1) > 0.3f) continue;
+        // on the boundary, not continous
+        if (abs(d - d2) > 0.3f) continue;
+      }
 
       float px, py, pz;
       float px1, py1, pz1;
