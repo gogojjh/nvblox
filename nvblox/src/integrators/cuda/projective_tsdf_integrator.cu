@@ -162,6 +162,7 @@ __device__ inline bool updateVoxelMultiWeightComp(
     // The left term of equ.(6)
     float normal_ratio = 1.0f;
     bool has_normal = (measurement_normal.norm() > kFloatEpsilon);
+    bool need_keep = false;
 
     // case 1: existing gradient, use the gradient to compute the ratio
     if (voxel_gradient_current.norm() > kFloatEpsilon) {  // 1e-8
@@ -186,8 +187,9 @@ __device__ inline bool updateVoxelMultiWeightComp(
         //   normal_ratio = cos_theta;
         // }
         // NOTE(gogojjh):
-        if (abs(1.0f - cos_alpha) < 0.3f) {
+        if (abs(1.0f - cos_alpha) < 0.2f) {  // 75deg
           normal_ratio = cos_theta;
+          need_keep = true;
         }
         // condition 2: curve surface
         else {
@@ -208,10 +210,12 @@ __device__ inline bool updateVoxelMultiWeightComp(
       if (measurement_normal.norm() > kFloatEpsilon) {
         normal_ratio = abs(measurement_point.dot(measurement_normal) /
                            measurement_point.norm());
+        if (normal_ratio < 0.2f) need_keep = true;  // 75deg
       }
     }
-    // ruling out extremely large incidence angle
-    if (normal_ratio < TSDF_NORMAL_RATIO_TH) return false;
+    // ruling out extremely large incidence angle,
+    // but keep points close to the ground
+    if (normal_ratio < TSDF_NORMAL_RATIO_TH && !need_keep) return false;
     float measurement_distance = normal_ratio * voxel_distance_measured;
 
     float measurement_weight;
@@ -236,20 +240,15 @@ __device__ inline bool updateVoxelMultiWeightComp(
     float fused_distance = (measurement_distance * measurement_weight +
                             voxel_distance_current * voxel_weight_current) /
                            (measurement_weight + voxel_weight_current);
+    if (fused_distance > 0.0f) {
+      fused_distance = fminf(truncation_distance_m, fused_distance);
+    } else {
+      fused_distance = fmaxf(-truncation_distance_m, fused_distance);
+    }
     const float fused_weight =
         fminf(voxel_weight_current + measurement_weight, max_weight);
-    voxel_ptr->distance = fminf(fused_distance, truncation_distance_m);
+    voxel_ptr->distance = fused_distance;
     voxel_ptr->weight = fused_weight;
-    // if (blockIdx.x == 0) {
-    //   Eigen::Vector3f gradient_C = T_C_L.rotation() * voxel_gradient_current;
-    //   printf(
-    //       "point: (%f, %f, %f), normal: (%f, %f, %f), gradient: (%f, %f,
-    //       %f)\n", measurement_point.x(), measurement_point.y(),
-    //       measurement_point.z(), measurement_normal.x(),
-    //       measurement_normal.y(), measurement_normal.z(), gradient_C.x(),
-    //       gradient_C.y(), gradient_C.z());
-    //   printf("distance: %f, weight: %f\n\n", fused_distance, fused_weight);
-    // }
 
     // existing normal, update the gradient
     if (measurement_normal.norm() > kFloatEpsilon) {

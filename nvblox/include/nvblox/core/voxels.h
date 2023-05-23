@@ -61,7 +61,8 @@ typedef Eigen::Matrix<float, kTotalNumberOfLabels, kTotalNumberOfLabels>
 
 struct SemanticVoxel {
   // Initialize voxel to unknown label.
-  uint16_t semantic_label = 0u;
+  // uint16_t semantic_label = 0u;
+  short int semantic_label = 0;
   // Initialize voxel to uniform probability.
   // Use log odds! So uniform ditribution of 1/kTotalNumberOfLabels,
   // should be std::log(1/kTotalNumberOfLabels)

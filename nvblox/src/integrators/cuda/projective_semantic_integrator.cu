@@ -404,11 +404,11 @@ __global__ void updateColorBlocks(
   // clang-format off
   Index3D color;            // bgr
   if (dataset_type == 1) {  // SemanticFusionPortable
-    nvblox::semanticfusionportable::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+    nvblox::semanticfusionportable::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   } else if (dataset_type == 3) {  // SemanticKitti
-    nvblox::semantic_kitti::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+    nvblox::semantic_kitti::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   } else if (dataset_type == 6) {  // CityScapes
-    nvblox::cityscapes::updateLabelColorMap(semantic_voxel_ptr->semantic_label, &color);
+    nvblox::cityscapes::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   }
   // clang-format on
 

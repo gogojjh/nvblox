@@ -36,10 +36,11 @@ __global__ void computeNormalImageOSLidar(
       float d2 = image::access<float>(vv, u, w, depth_image);
       // on the boundary, not continous
 
+      // NOTE(gogojjh): to avoid over-filter of near points
       if (d > 5.0) {
-        if (abs(d - d1) > 1.0f) continue;
+        if (abs(d - d1) > 0.7f) continue;
         // on the boundary, not continous
-        if (abs(d - d2) > 1.0f) continue;
+        if (abs(d - d2) > 0.7f) continue;
       } else {
         if (abs(d - d1) > 0.3f) continue;
         // on the boundary, not continous
@@ -86,7 +87,7 @@ __global__ void computeNormalImageOSLidar(
         ny = sign * (px - px1) * (pz - pz2) - (px - px2) * (pz - pz1);
         nz = sign * (px - px2) * (py - py1) - (px - px1) * (py - py2);
         float l = sqrt(nx * nx + ny * ny + nz * nz);
-        if (l == 0.0f) {
+        if (l < 1e-3) {
           continue;
         } else {
           nx /= l;
