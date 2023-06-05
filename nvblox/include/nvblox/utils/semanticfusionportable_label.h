@@ -22,6 +22,7 @@ __host__ __device__ inline void RemapSemanticFusionPortableLabel(
   switch (input_label) {
     case 0u:
       *update_label = 0u;
+      // label_name = "Unlabeled";
       break;
     case 1u:
       *update_label = 1u;
@@ -29,7 +30,7 @@ __host__ __device__ inline void RemapSemanticFusionPortableLabel(
       break;
     case 2u:
       *update_label = 2u;
-      // label_name = "Sidewalk";
+      // label_name = "Bike Path";
       break;
     case 3u:
       *update_label = 3u;
@@ -99,6 +100,22 @@ __host__ __device__ inline void RemapSemanticFusionPortableLabel(
       *update_label = 19u;
       // label_name = "Bicycle";
       break;
+    case 20u:
+      *update_label = 20u;
+      // label_name = "Curb";
+      break;
+    case 21u:
+      *update_label = 21u;
+      // label_name = "River";
+      break;
+    case 22u:
+      *update_label = 22u;
+      // label_name = "Road block";
+      break;
+    case 23u:
+      *update_label = 23u;
+      // label_name = "Sidewalk"
+      break;
     default:
       *update_label = 0u;
       break;
@@ -110,66 +127,103 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
   switch (label) {
     case 0u:
       *color = Index3D(127, 127, 127);
+      // label_name = "Unlabeled";
       break;
     case 1u:
       *color = Index3D(128, 64, 128);
+      // label_name = "Road";
       break;
     case 2u:
       *color = Index3D(244, 35, 232);
+      // label_name = "Bike Path";
       break;
     case 3u:
       *color = Index3D(70, 70, 70);
+      // label_name = "Building";
       break;
     case 4u:
       *color = Index3D(102, 102, 156);
+      // label_name = "Wall";
       break;
     case 5u:
       *color = Index3D(190, 153, 153);
+      // label_name = "Fence";
       break;
     case 6u:
       *color = Index3D(153, 153, 153);
+      // label_name = "Pole";
       break;
     case 7u:
       *color = Index3D(250, 170, 30);
+      // label_name = "Traffic light";
       break;
     case 8u:
       *color = Index3D(220, 220, 0);
+      // label_name = "Traffic sign";
       break;
     case 9u:
       *color = Index3D(107, 142, 35);
+      // label_name = "Vegetation";
       break;
     case 10u:
       *color = Index3D(152, 251, 152);
+      // label_name = "Terrain";
       break;
     case 11u:
       *color = Index3D(70, 130, 180);
+      // label_name = "Sky";
       break;
     case 12u:
       *color = Index3D(220, 20, 60);
+      // label_name = "Person";
       break;
     case 13u:
       *color = Index3D(255, 0, 0);
+      // label_name = "Rider";
       break;
     case 14u:
       *color = Index3D(0, 0, 142);
+      // label_name = "Car";
       break;
     case 15u:
       *color = Index3D(0, 0, 70);
+      // label_name = "Truck";
       break;
     case 16u:
       *color = Index3D(0, 60, 100);
+      // label_name = "Bus";
       break;
     case 17u:
       *color = Index3D(0, 80, 100);
+      // label_name = "Train";
       break;
     case 18u:
       *color = Index3D(0, 0, 230);
+      // label_name = "Motorcycle";
       break;
     case 19u:
+      *color = Index3D(147, 109, 6);
+      // label_name = "Bicycle";
+      break;
+    case 20:
       *color = Index3D(119, 11, 32);
+      // label_name = "Curb";
+      break;
+    case 21u:
+      *color = Index3D(244, 255, 152);
+      // label_name = "River";
+      break;
+    case 22u:
+      *color = Index3D(234, 178, 200);
+      // label_name = "Road block";
+      break;
+    case 23u:
+      *color = Index3D(244, 35, 232);
+      // label_name = "Sidewalk"
       break;
     default:
       *color = Index3D(127, 127, 127);
+      // label_name = "Unlabeled";
       break;
   }
 }
