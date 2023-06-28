@@ -134,7 +134,7 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       // label_name = "Road";
       break;
     case 2u:
-      *color = Index3D(244, 35, 232);
+      *color = Index3D(232, 35, 244);
       // label_name = "Bike Path";
       break;
     case 3u:
@@ -142,11 +142,11 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       // label_name = "Building";
       break;
     case 4u:
-      *color = Index3D(102, 102, 156);
+      *color = Index3D(156, 102, 102);
       // label_name = "Wall";
       break;
     case 5u:
-      *color = Index3D(190, 153, 153);
+      *color = Index3D(153, 153, 190);
       // label_name = "Fence";
       break;
     case 6u:
@@ -154,15 +154,15 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       // label_name = "Pole";
       break;
     case 7u:
-      *color = Index3D(250, 170, 30);
+      *color = Index3D(30, 170, 250);
       // label_name = "Traffic light";
       break;
     case 8u:
-      *color = Index3D(220, 220, 0);
+      *color = Index3D(0, 220, 220);
       // label_name = "Traffic sign";
       break;
     case 9u:
-      *color = Index3D(107, 142, 35);
+      *color = Index3D(35, 142, 107);
       // label_name = "Vegetation";
       break;
     case 10u:
@@ -170,55 +170,55 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       // label_name = "Terrain";
       break;
     case 11u:
-      *color = Index3D(70, 130, 180);
+      *color = Index3D(180, 130, 70);
       // label_name = "Sky";
       break;
     case 12u:
-      *color = Index3D(220, 20, 60);
+      *color = Index3D(60, 20, 220);
       // label_name = "Person";
       break;
     case 13u:
-      *color = Index3D(255, 0, 0);
+      *color = Index3D(0, 0, 255);
       // label_name = "Rider";
       break;
     case 14u:
-      *color = Index3D(0, 0, 142);
+      *color = Index3D(142, 0, 0);
       // label_name = "Car";
       break;
     case 15u:
-      *color = Index3D(0, 0, 70);
+      *color = Index3D(70, 0, 0);
       // label_name = "Truck";
       break;
     case 16u:
-      *color = Index3D(0, 60, 100);
+      *color = Index3D(100, 60, 0);
       // label_name = "Bus";
       break;
     case 17u:
-      *color = Index3D(0, 80, 100);
+      *color = Index3D(100, 80, 0);
       // label_name = "Train";
       break;
     case 18u:
-      *color = Index3D(0, 0, 230);
+      *color = Index3D(230, 0, 0);
       // label_name = "Motorcycle";
       break;
     case 19u:
-      *color = Index3D(147, 109, 6);
+      *color = Index3D(6, 109, 147);
       // label_name = "Bicycle";
       break;
     case 20:
-      *color = Index3D(119, 11, 32);
+      *color = Index3D(32, 11, 119);
       // label_name = "Curb";
       break;
     case 21u:
-      *color = Index3D(244, 255, 152);
+      *color = Index3D(152, 255, 244);
       // label_name = "River";
       break;
     case 22u:
-      *color = Index3D(234, 178, 200);
+      *color = Index3D(200, 178, 234);
       // label_name = "Road block";
       break;
     case 23u:
-      *color = Index3D(244, 35, 232);
+      *color = Index3D(232, 35, 244);
       // label_name = "Sidewalk"
       break;
     default:

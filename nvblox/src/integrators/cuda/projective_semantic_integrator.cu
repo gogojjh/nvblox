@@ -48,9 +48,8 @@ __device__ inline bool updateSemanticVoxel(
   uint16_t update_label;
   if (dataset_type == 1) {  // SemanticFusionPortable
     nvblox::semanticfusionportable::RemapSemanticFusionPortableLabel(semantic_label, &update_label);
-    // Not proces unlabeled voxel
-    if (update_label == 0u) return false;
-  } else if (dataset_type == 3) {  // SemanticKitti
+    if (update_label == 0u) return false; // process unlabeled
+  } else if (dataset_type == 3 || dataset_type == 5) {  // SemanticKitti, SemanticUSL
     nvblox::semantic_kitti::RemapSemanticKittiLabel(semantic_label, &update_label);
     if (update_label == 0u) return false;
   } else if (dataset_type == 6) {  // CityScapes
@@ -402,10 +401,10 @@ __global__ void updateColorBlocks(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // clang-format off
-  Index3D color;            // bgr
+  Index3D color;            // rgb
   if (dataset_type == 1) {  // SemanticFusionPortable
     nvblox::semanticfusionportable::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
-  } else if (dataset_type == 3) {  // SemanticKitti
+  } else if (dataset_type == 3 || dataset_type == 5) {  // SemanticKitti, SemanticUSL
     nvblox::semantic_kitti::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   } else if (dataset_type == 6) {  // CityScapes
     nvblox::cityscapes::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
@@ -415,7 +414,7 @@ __global__ void updateColorBlocks(
   ColorVoxel* color_voxel_ptr =
       &(block_device_ptrs_color[blockIdx.x]
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
-  color_voxel_ptr->color = Color(color.z(), color.y(), color.x());
+  color_voxel_ptr->color = Color(color.x(), color.y(), color.z());
 }
 
 ProjectiveSemanticIntegrator::ProjectiveSemanticIntegrator()
@@ -630,8 +629,9 @@ void ProjectiveSemanticIntegrator::integrateLidarFrame(
       "semantic/integrate/reduce_to_blocks_in_band");
   block_indices = reduceBlocksToThoseInTruncationBand(block_indices, tsdf_layer,
                                                       truncation_distance_m);
-  // LOG(INFO) << "[semantic] (remining after removal) block_indices size: "
-  //           << block_indices.size();
+  // LOG_EVERY_N(INFO, 10)
+  //     << "[semantic] (remining after removal) block_indices size: "
+  //     << block_indices.size();
   blocks_in_band_timer.Stop();
   // ***********************************************************
 
@@ -812,7 +812,7 @@ __global__ void checkBlocksInTruncationBandSemantics(
   // reading, all threads' writes will result in a single write to global
   // memory. Because we only write a single value (1) it doesn't matter which
   // thread "wins".
-  if (std::abs(voxel.distance) <= truncation_distance_m) {
+  if (std::abs(voxel.distance) <= truncation_distance_m && voxel.weight > 0) {
     contains_truncation_band_device_ptr[blockIdx.x] = true;
   }
 }

@@ -132,6 +132,10 @@ class ViewCalculator {
   /// @param raycast_to_pixels whether to raycast to block corners.
   void raycast_to_pixels(bool raycast_to_pixels);
 
+  void ray_tracing_enabled(bool ray_tracing_enabled) {
+    ray_tracing_enabled_ = ray_tracing_enabled;
+  }
+
  private:
   // Raycasts to all corners of all blocks touched by the endpoints of depth
   // rays.
@@ -185,6 +189,8 @@ class ViewCalculator {
   unsigned int raycast_subsampling_factor_ = 1;
 
   cudaStream_t cuda_stream_;
+
+  bool ray_tracing_enabled_ = true;
 };
 
 }  // namespace nvblox

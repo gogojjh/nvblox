@@ -159,6 +159,7 @@ __host__ __device__ inline void RemapSemanticKittiLabel(
   }
 }
 
+// RGB
 __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
                                                     Index3D* color) {
   switch (label) {
@@ -166,34 +167,34 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       *color = Index3D(127, 127, 127);
       break;
     case 1u:
-      *color = Index3D(245, 150, 100);
+      *color = Index3D(100, 150, 245);
       break;
     case 2u:
-      *color = Index3D(245, 230, 100);
+      *color = Index3D(100, 230, 245);
       break;
     case 3u:
-      *color = Index3D(250, 80, 100);
+      *color = Index3D(100, 80, 250);
       break;
     case 4u:
-      *color = Index3D(150, 60, 30);
+      *color = Index3D(30, 60, 150);
       break;
     case 5u:
-      *color = Index3D(255, 0, 0);
+      *color = Index3D(0, 0, 255);
       break;
     case 6u:
-      *color = Index3D(180, 30, 80);
+      *color = Index3D(80, 30, 180);
       break;
     case 7u:
-      *color = Index3D(255, 0, 0);
+      *color = Index3D(0, 0, 255);
       break;
     case 8u:
-      *color = Index3D(30, 30, 255);
+      *color = Index3D(255, 30, 30);
       break;
     case 9u:
-      *color = Index3D(200, 40, 255);
+      *color = Index3D(255, 40, 200);
       break;
     case 10u:
-      *color = Index3D(90, 30, 150);
+      *color = Index3D(150, 30, 90);
       break;
     case 11u:
       *color = Index3D(255, 0, 255);
@@ -205,61 +206,61 @@ __host__ __device__ inline void updateLabelColorMap(const uint16_t& label,
       *color = Index3D(75, 0, 75);
       break;
     case 14u:
-      *color = Index3D(75, 0, 175);
+      *color = Index3D(175, 0, 75);
       break;
     case 15u:
-      *color = Index3D(0, 200, 255);
+      *color = Index3D(255, 200, 0);
       break;
     case 16u:
-      *color = Index3D(50, 120, 255);
+      *color = Index3D(255, 120, 50);
       break;
     case 17u:
-      *color = Index3D(0, 150, 255);
+      *color = Index3D(255, 150, 0);
       break;
     case 18u:
-      *color = Index3D(170, 255, 150);
+      *color = Index3D(150, 255, 170);
       break;
     case 19u:
       *color = Index3D(0, 175, 0);
       break;
     case 20u:
-      *color = Index3D(0, 60, 135);
+      *color = Index3D(135, 60, 0);
       break;
     case 21u:
-      *color = Index3D(80, 240, 150);
+      *color = Index3D(150, 240, 80);
       break;
     case 22u:
-      *color = Index3D(150, 240, 255);
+      *color = Index3D(255, 240, 150);
       break;
     case 23u:
-      *color = Index3D(0, 0, 255);
+      *color = Index3D(255, 0, 0);
       break;
     case 24u:
-      *color = Index3D(255, 255, 50);
+      *color = Index3D(50, 255, 255);
       break;
     case 25u:
-      *color = Index3D(245, 150, 100);
+      *color = Index3D(100, 150, 245);
       break;
     case 26u:
-      *color = Index3D(255, 0, 0);
+      *color = Index3D(0, 0, 255);
       break;
     case 27u:
-      *color = Index3D(200, 40, 255);
+      *color = Index3D(255, 40, 200);
       break;
     case 28u:
-      *color = Index3D(30, 30, 255);
+      *color = Index3D(255, 30, 30);
       break;
     case 29u:
-      *color = Index3D(90, 30, 150);
+      *color = Index3D(150, 30, 90);
       break;
     case 30u:
-      *color = Index3D(250, 80, 100);
+      *color = Index3D(100, 80, 250);
       break;
     case 31u:
-      *color = Index3D(180, 30, 80);
+      *color = Index3D(80, 30, 180);
       break;
     case 32u:
-      *color = Index3D(255, 0, 0);
+      *color = Index3D(0, 0, 255);
       break;
     default:
       *color = Index3D(127, 127, 127);

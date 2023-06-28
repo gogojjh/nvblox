@@ -161,7 +161,7 @@ __global__ void combinedBlockIndicesInImageKernel(
     int rows, int cols, const float block_size,
     const float max_integration_distance_m, const float truncation_distance_m,
     int raycast_subsampling_factor, const Index3D aabb_min,
-    const Index3D aabb_size, bool* aabb_updated) {
+    const Index3D aabb_size, bool* aabb_updated, bool ray_tracing_enabled) {
   // First, figure out which pixel we're in.
   const int ray_idx_row = blockIdx.x * blockDim.x + threadIdx.x;
   const int ray_idx_col = blockIdx.y * blockDim.y + threadIdx.y;
@@ -203,10 +203,23 @@ __global__ void combinedBlockIndicesInImageKernel(
   setIndexUpdated(block_index, aabb_min, aabb_size, aabb_updated);
 
   // Ok raycast to the correct point in the block.
-  RayCaster raycaster(T_L_C.translation() / block_size, p_L / block_size);
-  Index3D ray_index = Index3D::Zero();
-  while (raycaster.nextRayIndex(&ray_index)) {
-    setIndexUpdated(ray_index, aabb_min, aabb_size, aabb_updated);
+  // NOTE(gogojjh):
+  if (ray_tracing_enabled) {
+    RayCaster raycaster(T_L_C.translation() / block_size, p_L / block_size);
+    Index3D ray_index = Index3D::Zero();
+    while (raycaster.nextRayIndex(&ray_index)) {
+      setIndexUpdated(ray_index, aabb_min, aabb_size, aabb_updated);
+    }
+  } else {
+    Vector3f p_C_start =
+        (depth - truncation_distance_m) *
+        camera.vectorFromPixelIndices(Index2D(pixel_col, pixel_row));
+    Vector3f p_L_start = T_L_C * p_C_start;
+    RayCaster raycaster(p_L_start / block_size, p_L / block_size);
+    Index3D ray_index = Index3D::Zero();
+    while (raycaster.nextRayIndex(&ray_index)) {
+      setIndexUpdated(ray_index, aabb_min, aabb_size, aabb_updated);
+    }
   }
 }
 
@@ -407,7 +420,7 @@ void ViewCalculator::getBlocksByRaycastingPixels(
       T_L_C, sensor, depth_frame.dataConstPtr(), depth_frame.rows(),
       depth_frame.cols(), block_size, max_integration_distance_m,
       truncation_distance_m, raycast_subsampling_factor_, min_index, aabb_size,
-      aabb_updated_cuda);
+      aabb_updated_cuda, ray_tracing_enabled_);
 
   checkCudaErrors(cudaStreamSynchronize(cuda_stream_));
   checkCudaErrors(cudaPeekAtLastError());
