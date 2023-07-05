@@ -236,6 +236,7 @@ __device__ inline bool updateVoxelMultiWeightComp(
     // precision of floating points dividing by this small value can cause nans
     if (measurement_weight < kFloatEpsilon) return false;
 
+    // NOTE(gogojjh): this is an important trick to improve the accuracy
     if (!has_normal) measurement_weight *= 0.1f;
     float fused_distance = (measurement_distance * measurement_weight +
                             voxel_distance_current * voxel_weight_current) /

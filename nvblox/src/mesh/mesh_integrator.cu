@@ -460,6 +460,7 @@ void MeshIntegrator::meshBlocksGPU(const TsdfLayer& distance_layer,
   }
 }
 
+// NOTE(gogojjh): weld vertices of the mesh
 template <int kBlockThreads, int kItemsPerThread>
 __global__ void weldVerticesCubKernel(CudaMeshBlock* mesh_blocks) {
   // First get the correct block for this.

@@ -41,6 +41,7 @@ template void ProjectiveSemanticIntegrator::integrateCameraFrame(
 namespace nvblox {
 __device__ inline bool updateSemanticVoxel(
     const int dataset_type,                                     // NOLINT
+    const bool bayesian_semantics_enable,                       // NOLINT
     const uint16_t semantic_label,                              // NOLINT
     const SemanticLikelihoodFunction* semantic_log_likelihood,  // NOLINT
     SemanticVoxel* voxel_ptr) {
@@ -66,7 +67,6 @@ __device__ inline bool updateSemanticVoxel(
     return false;
   }
   measurement_frequency[update_label] += 1.0f;
-
   voxel_ptr->semantic_priors +=
       (*semantic_log_likelihood) * measurement_frequency;
 
@@ -78,7 +78,12 @@ __device__ inline bool updateSemanticVoxel(
   // ************************************************************************
 
   // updateSemanticVoxel label by the MLE
-  voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
+  if (bayesian_semantics_enable) {
+    voxel_ptr->semantic_priors.maxCoeff(&voxel_ptr->semantic_label);
+  } else {
+    // NOTE(gogojjh): not used Bayesian filter
+    voxel_ptr->semantic_label = update_label;
+  }
   return true;
 }
 
@@ -252,6 +257,7 @@ __global__ void integrateCameraBlocksKernel(
     const float max_weight,                                 // NOLINT
     const float max_integration_distance,                   // NOLINT
     const int dataset_type,                                 // NOLINT
+    const bool bayesian_semantics_enable,                   // NOLINT
     const int depth_subsample_factor,                       // NOLINT
     SemanticBlock** block_device_ptrs,                      // NOLINT
     SemanticLikelihoodFunction* semantic_log_likelihood) {  // NOLINT
@@ -307,8 +313,8 @@ __global__ void integrateCameraBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel (Camera)
-  updateSemanticVoxel(dataset_type, semantic_image_value,
-                      semantic_log_likelihood, voxel_ptr);
+  updateSemanticVoxel(dataset_type, bayesian_semantics_enable,
+                      semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
 // **********************************************
@@ -328,6 +334,7 @@ __global__ void integrateLidarBlocksKernel(
     const float linear_interp_max_allowable_difference_m,            // NOLINT
     const float nearest_interp_max_allowable_squared_dist_to_ray_m,  // NOLINT
     const int dataset_type,                                          // NOLINT
+    const bool bayesian_semantics_enable,                            // NOLINT
     SemanticBlock** block_device_ptrs,                               // NOLINT
     SemanticLikelihoodFunction* semantic_log_likelihood) {           // NOLINT
   // function 1
@@ -385,8 +392,8 @@ __global__ void integrateLidarBlocksKernel(
             ->voxels[threadIdx.z][threadIdx.y][threadIdx.x]);
 
   // Update the semantic voxel (LiDAR)
-  updateSemanticVoxel(dataset_type, semantic_image_value,
-                      semantic_log_likelihood, voxel_ptr);
+  updateSemanticVoxel(dataset_type, bayesian_semantics_enable,
+                      semantic_image_value, semantic_log_likelihood, voxel_ptr);
 }
 
 // ***************************************************************
@@ -468,6 +475,15 @@ int ProjectiveSemanticIntegrator::dataset_type() const { return dataset_type_; }
 void ProjectiveSemanticIntegrator::dataset_type(int value) {
   CHECK_GE(value, 0);
   dataset_type_ = value;
+}
+
+bool ProjectiveSemanticIntegrator::bayesian_semantics_enabled() const {
+  return bayesian_semantics_enabled_;
+}
+
+void ProjectiveSemanticIntegrator::bayesian_semantics_enabled(bool value) {
+  CHECK_GE(value, 0);
+  bayesian_semantics_enabled_ = value;
 }
 
 // *********************************************
@@ -583,6 +599,7 @@ void ProjectiveSemanticIntegrator::integrateCameraBlocks(
       max_weight_,                      // NOLINT
       max_integration_distance_m_,      // NOLINT
       dataset_type_,                    // NOLINT
+      bayesian_semantics_enabled_,      // NOLINT
       depth_subsampling_factor,         // NOLINT
       block_ptrs_device_.data(),        // NOLINT
       semantic_log_likelihood_device);  // NOLINT
@@ -694,6 +711,7 @@ void ProjectiveSemanticIntegrator::integrateLidarBlocks(
       linear_interpolation_max_allowable_difference_m,            // NOLINT
       nearest_interpolation_max_allowable_squared_dist_to_ray_m,  // NOLINT
       dataset_type_,                                              // NOLINT
+      bayesian_semantics_enabled_,                                // NOLINT
       block_ptrs_device_.data(),                                  // NOLINT
       semantic_log_likelihood_device);                            // NOLINT
 

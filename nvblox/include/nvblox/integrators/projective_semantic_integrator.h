@@ -123,12 +123,21 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
 
   int dataset_type() const;
 
+  bool bayesian_semantics_enabled() const;
+
   /**
    * @brief Set the dataset type for parsing dataset label
    *
    * @param dataset_type
    */
   void dataset_type(int dataset_type);
+
+  /**
+   * @brief Set the bayesian semantics filter for updating dataset label
+   *
+   * @param bayesian_semantics_enabled
+   */
+  void bayesian_semantics_enabled(bool bayesian_semantics_enabled);
 
  protected:
   // Params
@@ -138,6 +147,8 @@ class ProjectiveSemanticIntegrator : public ProjectiveIntegratorBase {
 
   // Dataset type
   float dataset_type_ = 0;
+
+  bool bayesian_semantics_enabled_ = true;
 
   // NOTE(gogojjh): Set the likelihood of semantic fusion
   float match_probability_, non_match_probability_;
