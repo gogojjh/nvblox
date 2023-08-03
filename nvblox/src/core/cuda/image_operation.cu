@@ -37,14 +37,14 @@ __global__ void computeNormalImageOSLidar(
       // on the boundary, not continous
 
       // NOTE(gogojjh): to avoid over-filter of near points
-      if (d > 5.0) {
-        if (abs(d - d1) > 0.7f) continue;
+      if (d > 10.0) {
+        if (abs(d - d1) > 2.0f) continue;
         // on the boundary, not continous
-        if (abs(d - d2) > 0.7f) continue;
+        if (abs(d - d2) > 2.0f) continue;
       } else {
-        if (abs(d - d1) > 0.3f) continue;
+        if (abs(d - d1) > 0.5f) continue;
         // on the boundary, not continous
-        if (abs(d - d2) > 0.3f) continue;
+        if (abs(d - d2) > 0.5f) continue;
       }
 
       float px, py, pz;

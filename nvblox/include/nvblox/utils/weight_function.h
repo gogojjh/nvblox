@@ -10,6 +10,7 @@ __host__ __device__ inline float tsdf_constant_weight(const float& sdf) {
 
 __host__ __device__ inline float tsdf_linear_weight(const float& sdf,
                                                     const float& trunc) {
+  // TODO(gogojjh): it seems that there has an issue                                                      
   float epsilon = trunc * 0.5f;
   float a = 0.5f * trunc / (trunc - epsilon);
   float b = 0.5f / (trunc - epsilon);

@@ -183,14 +183,14 @@ __device__ inline bool updateVoxelMultiWeightComp(
         float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
 
         // condition 1: flat surface, alpha is approximate to zero
-        // if (abs(1.0f - cos_alpha) < kFloatEpsilon) {
-        //   normal_ratio = cos_theta;
-        // }
-        // NOTE(gogojjh):
-        if (abs(1.0f - cos_alpha) < 0.2f) {  // 75deg
+        if (abs(1.0f - cos_alpha) < kFloatEpsilon) {
           normal_ratio = cos_theta;
-          need_keep = true;
         }
+        // NOTE(gogojjh):
+        // if (abs(1.0f - cos_alpha) < 0.2f) {  // <75deg
+        //   normal_ratio = cos_theta;
+        //   need_keep = true;
+        // }
         // condition 2: curve surface
         else {
           normal_ratio =
@@ -210,12 +210,12 @@ __device__ inline bool updateVoxelMultiWeightComp(
       if (measurement_normal.norm() > kFloatEpsilon) {
         normal_ratio = abs(measurement_point.dot(measurement_normal) /
                            measurement_point.norm());
-        if (normal_ratio < 0.2f) need_keep = true;  // 75deg
+        // if (normal_ratio < 0.2f) need_keep = true;  // <75deg
       }
     }
-    // ruling out extremely large incidence angle,
-    // but keep points close to the ground
-    if (normal_ratio < TSDF_NORMAL_RATIO_TH && !need_keep) return false;
+
+    // ruling out extremely large incidence angle, but keep points close to the ground
+    // if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH && !need_keep) return false;
     float measurement_distance = normal_ratio * voxel_distance_measured;
 
     float measurement_weight;
@@ -237,7 +237,12 @@ __device__ inline bool updateVoxelMultiWeightComp(
     if (measurement_weight < kFloatEpsilon) return false;
 
     // NOTE(gogojjh): this is an important trick to improve the accuracy
-    if (!has_normal) measurement_weight *= 0.1f;
+    if (!has_normal) {
+      measurement_weight *= 0.1f;
+    }
+    else if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH) {
+      measurement_weight *= 0.1f;
+    }
     float fused_distance = (measurement_distance * measurement_weight +
                             voxel_distance_current * voxel_weight_current) /
                            (measurement_weight + voxel_weight_current);
