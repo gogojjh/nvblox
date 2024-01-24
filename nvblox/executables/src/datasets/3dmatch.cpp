@@ -98,11 +98,12 @@ std::string getPathForColorImage(const std::string& base_path, const int seq_id,
   return ss.str();
 }
 
+// DEBUG(gogojjh):
 std::unique_ptr<ImageLoader<DepthImage>> createDepthImageLoader(
     const std::string& base_path, const int seq_id, const bool multithreaded) {
   return createImageLoader<DepthImage>(
       std::bind(getPathForDepthImage, base_path, seq_id, std::placeholders::_1),
-      multithreaded);
+      multithreaded, 1.0f / 1000.0f, 0.0);
 }
 
 std::unique_ptr<ImageLoader<ColorImage>> createColorImageLoader(
@@ -197,13 +198,14 @@ DataLoadResult DataLoader::loadNext(DepthImage* depth_frame_ptr,
   }
 
   // Rotate the world frame since Y is up in the normal 3D match dasets.
+  // NOTE(gogojjh):
   Eigen::Quaternionf q_L_O =
       Eigen::Quaternionf::FromTwoVectors(Vector3f(0, 1, 0), Vector3f(0, 0, 1));
   *T_L_C_ptr = q_L_O * T_O_C;
 
   // Check that the loaded data doesn't contain NaNs or a faulty rotation
-  // matrix. This does occur. If we find one, skip that frame and move to the
-  // next.
+  // matrix. This does occur. If we find one, skip that frame and move to
+  // the next.
   constexpr float kRotationMatrixDetEpsilon = 1e-4;
   if (!T_L_C_ptr->matrix().allFinite() || !camera_intrinsics.allFinite() ||
       std::abs(T_L_C_ptr->matrix().block<3, 3>(0, 0).determinant() - 1.0f) >

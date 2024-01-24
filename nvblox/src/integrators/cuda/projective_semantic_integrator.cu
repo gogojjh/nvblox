@@ -54,6 +54,9 @@ __device__ inline bool updateSemanticVoxel(
     nvblox::semantic_kitti::RemapSemanticKittiLabel(semantic_label, &update_label);
     if (update_label == 0u) return false;
   } else if (dataset_type == 6) {  // CityScapes
+    nvblox::cityscapes::RemapCityScapesTrainLabel(semantic_label, &update_label);
+    if (update_label == 0u) return false;
+  } else if (dataset_type == 7) {  // CityScapes
     nvblox::cityscapes::RemapCityScapesLabel(semantic_label, &update_label);
     if (update_label == 0u) return false;
   }
@@ -413,7 +416,7 @@ __global__ void updateColorBlocks(
     nvblox::semanticfusionportable::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   } else if (dataset_type == 3 || dataset_type == 5) {  // SemanticKitti, SemanticUSL
     nvblox::semantic_kitti::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
-  } else if (dataset_type == 6) {  // CityScapes
+  } else if (dataset_type == 6 || dataset_type == 7) {  // CityScapes_Train, CityScapes
     nvblox::cityscapes::updateLabelColorMap(uint16_t(semantic_voxel_ptr->semantic_label), &color);
   }
   // clang-format on

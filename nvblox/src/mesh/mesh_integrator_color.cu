@@ -37,6 +37,15 @@ void MeshIntegrator::colorMesh(const ColorLayer& color_layer,
   colorMeshGPU(color_layer, block_indices, mesh_layer);
 }
 
+__host__ __device__ inline Color orangeColor(float h) {
+  Color color;
+
+  color.r = 255;
+  color.g = 255 * min(h / 20.0, 1.0);
+  color.b = 0;
+  return color;
+}
+
 //
 /* Color Mesh blocks on the GPU
  *
@@ -104,6 +113,8 @@ __global__ void colorMeshBlocksConstant(Color color,
   for (int i = threadIdx.x; i < cuda_mesh_block.vertices_size;
        i += blockDim.x) {
     cuda_mesh_block.colors[i] = color;
+    // NOTE(gogojjh): for visualization on FusionPortable dataset
+    // cuda_mesh_block.colors[i] = orangeColor(cuda_mesh_block.vertices[i][2]);    
   }
 }
 
