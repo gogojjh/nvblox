@@ -48,7 +48,7 @@ TEST(FuserTest, CommandLineFlags) {
   };
   int argc = (sizeof(argv) / sizeof(*(argv))) - 1;
   char** argv_ptr = argv;
-  gflags::ParseCommandLineFlags(&argc, &argv_ptr, true);
+  google::ParseCommandLineFlags(&argc, &argv_ptr, true);
 
   std::unique_ptr<FuserRGBD> fuser =
       datasets::threedmatch::createFuser("./data/3dmatch", 1);

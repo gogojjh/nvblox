@@ -85,7 +85,7 @@ FuserRGBD::FuserRGBD(
     : data_loader_(std::move(data_loader)) {
   // NOTE(alexmillane): We require the voxel size before we construct the
   // mapper, so we grab this parameter first and separately.
-  if (!gflags::GetCommandLineFlagInfoOrDie("voxel_size").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("voxel_size").is_default) {
     LOG(INFO) << "Command line parameter found: voxel_size = "
               << FLAGS_voxel_size;
     setVoxelSize(static_cast<float>(FLAGS_voxel_size));
@@ -108,53 +108,53 @@ FuserRGBD::FuserRGBD(
 
 void FuserRGBD::readCommandLineFlags() {
   // Dataset flags
-  if (!gflags::GetCommandLineFlagInfoOrDie("num_frames").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("num_frames").is_default) {
     LOG(INFO) << "Command line parameter found: num_frames = "
               << FLAGS_num_frames;
     num_frames_to_integrate_ = FLAGS_num_frames;
   }
   // Output paths
-  if (!gflags::GetCommandLineFlagInfoOrDie("timing_output_path").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("timing_output_path").is_default) {
     LOG(INFO) << "Command line parameter found: timing_output_path = "
               << FLAGS_timing_output_path;
     timing_output_path_ = FLAGS_timing_output_path;
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("esdf_output_path").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("esdf_output_path").is_default) {
     LOG(INFO) << "Command line parameter found: esdf_output_path = "
               << FLAGS_esdf_output_path;
     esdf_output_path_ = FLAGS_esdf_output_path;
     setEsdfMode(RgbdMapper::EsdfMode::k3D);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("mesh_output_path").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("mesh_output_path").is_default) {
     LOG(INFO) << "Command line parameter found: mesh_output_path = "
               << FLAGS_mesh_output_path;
     mesh_output_path_ = FLAGS_mesh_output_path;
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("map_output_path").is_default) {
+  if (!google::GetCommandLineFlagInfoOrDie("map_output_path").is_default) {
     LOG(INFO) << "Command line parameter found: map_output_path = "
               << FLAGS_map_output_path;
     map_output_path_ = FLAGS_map_output_path;
   }
   // Subsampling flags
-  if (!gflags::GetCommandLineFlagInfoOrDie("tsdf_frame_subsampling")
+  if (!google::GetCommandLineFlagInfoOrDie("tsdf_frame_subsampling")
            .is_default) {
     LOG(INFO) << "Command line parameter found: tsdf_frame_subsampling = "
               << FLAGS_tsdf_frame_subsampling;
     setTsdfFrameSubsampling(FLAGS_tsdf_frame_subsampling);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("color_frame_subsampling")
+  if (!google::GetCommandLineFlagInfoOrDie("color_frame_subsampling")
            .is_default) {
     LOG(INFO) << "Command line parameter found: color_frame_subsampling = "
               << FLAGS_color_frame_subsampling;
     setColorFrameSubsampling(FLAGS_color_frame_subsampling);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("mesh_frame_subsampling")
+  if (!google::GetCommandLineFlagInfoOrDie("mesh_frame_subsampling")
            .is_default) {
     LOG(INFO) << "Command line parameter found: mesh_frame_subsampling = "
               << FLAGS_mesh_frame_subsampling;
     setMeshFrameSubsampling(FLAGS_mesh_frame_subsampling);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("esdf_frame_subsampling")
+  if (!google::GetCommandLineFlagInfoOrDie("esdf_frame_subsampling")
            .is_default) {
     LOG(INFO) << "Command line parameter found: esdf_frame_subsampling = "
               << FLAGS_esdf_frame_subsampling;
@@ -162,7 +162,7 @@ void FuserRGBD::readCommandLineFlags() {
   }
 
   // TSDF integrator
-  if (!gflags::GetCommandLineFlagInfoOrDie(
+  if (!google::GetCommandLineFlagInfoOrDie(
            "tsdf_integrator_max_integration_distance_m")
            .is_default) {
     LOG(INFO) << "Command line parameter found: "
@@ -171,7 +171,7 @@ void FuserRGBD::readCommandLineFlags() {
     mapper_->tsdf_integrator().max_integration_distance_m(
         FLAGS_tsdf_integrator_max_integration_distance_m);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie(
+  if (!google::GetCommandLineFlagInfoOrDie(
            "tsdf_integrator_truncation_distance_vox")
            .is_default) {
     LOG(INFO) << "Command line parameter found: "
@@ -180,7 +180,7 @@ void FuserRGBD::readCommandLineFlags() {
     mapper_->tsdf_integrator().truncation_distance_vox(
         FLAGS_tsdf_integrator_truncation_distance_vox);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("tsdf_integrator_max_weight")
+  if (!google::GetCommandLineFlagInfoOrDie("tsdf_integrator_max_weight")
            .is_default) {
     LOG(INFO) << "Command line parameter found: tsdf_integrator_max_weight = "
               << FLAGS_tsdf_integrator_max_weight;
@@ -188,13 +188,13 @@ void FuserRGBD::readCommandLineFlags() {
   }
 
   // Mesh integrator
-  if (!gflags::GetCommandLineFlagInfoOrDie("mesh_integrator_min_weight")
+  if (!google::GetCommandLineFlagInfoOrDie("mesh_integrator_min_weight")
            .is_default) {
     LOG(INFO) << "Command line parameter found: mesh_integrator_min_weight = "
               << FLAGS_mesh_integrator_min_weight;
     mapper_->mesh_integrator().min_weight(FLAGS_mesh_integrator_min_weight);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie("mesh_integrator_weld_vertices")
+  if (!google::GetCommandLineFlagInfoOrDie("mesh_integrator_weld_vertices")
            .is_default) {
     LOG(INFO)
         << "Command line parameter found: mesh_integrator_weld_vertices = "
@@ -204,7 +204,7 @@ void FuserRGBD::readCommandLineFlags() {
   }
 
   // Color integrator
-  if (!gflags::GetCommandLineFlagInfoOrDie(
+  if (!google::GetCommandLineFlagInfoOrDie(
            "color_integrator_max_integration_distance_m")
            .is_default) {
     LOG(INFO) << "Command line parameter found: "
@@ -215,13 +215,13 @@ void FuserRGBD::readCommandLineFlags() {
   }
 
   // ESDF integrator
-  if (!gflags::GetCommandLineFlagInfoOrDie("esdf_integrator_min_weight")
+  if (!google::GetCommandLineFlagInfoOrDie("esdf_integrator_min_weight")
            .is_default) {
     LOG(INFO) << "Command line parameter found: esdf_integrator_min_weight = "
               << FLAGS_esdf_integrator_min_weight;
     mapper_->esdf_integrator().min_weight(FLAGS_esdf_integrator_min_weight);
   }
-  if (!gflags::GetCommandLineFlagInfoOrDie(
+  if (!google::GetCommandLineFlagInfoOrDie(
            "esdf_integrator_max_site_distance_vox")
            .is_default) {
     LOG(INFO) << "Command line parameter found: "
@@ -231,7 +231,7 @@ void FuserRGBD::readCommandLineFlags() {
         FLAGS_esdf_integrator_max_site_distance_vox);
   }
 
-  if (!gflags::GetCommandLineFlagInfoOrDie("esdf_integrator_max_distance_m")
+  if (!google::GetCommandLineFlagInfoOrDie("esdf_integrator_max_distance_m")
            .is_default) {
     LOG(INFO)
         << "Command line parameter found: esdf_integrator_max_distance_m = "
