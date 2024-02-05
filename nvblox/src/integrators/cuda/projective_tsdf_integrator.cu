@@ -214,8 +214,9 @@ __device__ inline bool updateVoxelMultiWeightComp(
       }
     }
 
-    // ruling out extremely large incidence angle, but keep points close to the ground
-    // if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH && !need_keep) return false;
+    // ruling out extremely large incidence angle, but keep points close to the
+    // ground if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH &&
+    // !need_keep) return false;
     float measurement_distance = normal_ratio * voxel_distance_measured;
 
     float measurement_weight;
@@ -239,8 +240,7 @@ __device__ inline bool updateVoxelMultiWeightComp(
     // NOTE(gogojjh): this is an important trick to improve the accuracy
     if (!has_normal) {
       measurement_weight *= 0.1f;
-    }
-    else if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH) {
+    } else if (has_normal && normal_ratio < TSDF_NORMAL_RATIO_TH) {
       measurement_weight *= 0.1f;
     }
     float fused_distance = (measurement_distance * measurement_weight +
