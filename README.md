@@ -1,22 +1,6 @@
 # Nvblox-modify
 
-[Pipeline of NVBLOX](docs/code_review_nvblox.md)
-
-### Build the NVBlox
-1. Install dependencies (suggest using the docker image)
-```
-docker pull iidcramlab/cobra_x86:20230209-ros_noetic-py3-torch-cuda11.4
-nvidia-docker run -e DISPLAY -v ~/.Xauthority:/root/.Xauthority:rw --network host \
-  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-  -v /home/jjiao/mapping_ws/src:/Titan/code/mapping_ws/src \
-  -v /Titan/dataset:/Titan/dataset \
-  -v /Spy/dataset:/Spy/dataset \
-  --privileged --cap-add sys_ptrace \
-  -it --name cobra iidcramlab/cobra_x86:20230209-ros_noetic-py3-torch-cuda11.4 \
-  /bin/bash
-```
-
-2. Build
+### Build
 ```
 cd path_to_nvblox/nvblox
 mkdir build && cd build && cmake .. && make -j8

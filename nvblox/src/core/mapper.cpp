@@ -83,7 +83,7 @@ void RgbdMapper::integrateOSLidarDepth(DepthImage& depth_frame,
   lidar_tsdf_integrator_.integrateFrame(depth_frame, T_L_C, oslidar,
                                         layers_.getPtr<TsdfLayer>(),
                                         &updated_blocks);
-  LOG_EVERY_N(INFO, 10) << "Integrated TSDF block: " << updated_blocks.size();
+  LOG_EVERY_N(INFO, 10) << "[Every 10 Frames] Integrated TSDF block: " << updated_blocks.size();
 
   // Update all the relevant queues.
   mesh_blocks_to_update_.insert(updated_blocks.begin(), updated_blocks.end());
@@ -128,7 +128,7 @@ void RgbdMapper::integrateOSLidarSemantic(const DepthImage& depth_frame,
   semantic_integrator_.updateColorLayer(updated_blocks,
                                         layers_.get<SemanticLayer>(),
                                         layers_.getPtr<ColorLayer>());
-  LOG_EVERY_N(INFO, 10) << "Integrated LiDAR Semantics Voxel Blocks: "
+  LOG_EVERY_N(INFO, 10) << "[Every 10 Frames] Integrated LiDAR Semantics Voxel Blocks: "
                         << updated_blocks.size();
 }
 
